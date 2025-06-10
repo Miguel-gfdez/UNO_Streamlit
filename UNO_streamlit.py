@@ -419,6 +419,10 @@ elif pagina == "🔧 Configuración":
 # JUEGO
 # ========================
 
+# NOTAS - añadir opción de añadir puntos totales manualmente
+# CORRECCIONES: a la hora de seleccionar el ganador, tengo que pulsar 2 veces el botón de confirmar
+# Al usar la aplicación en el móvil, los botones de los puntos se ven todos en vertical y además están desordenados.
+# Añadir un TOP al final de la partida con ls jugadores y sus puntos totales
 elif pagina == "🎮 Juego":
     st.markdown("""
     <style>
