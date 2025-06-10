@@ -1,20 +1,13 @@
 import streamlit as st
 import math
-from cryptography.hazmat.backends import default_backend 
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 import base64
 import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import padding as sym_padding
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
-import json
+from datetime import datetime
 
 # ========================
 # INFORME LOGs GANADORES
@@ -24,177 +17,72 @@ import json
 # ========================
 # FUNCIONES DE CIFRADO
 # ========================
-def descifrar_clave_aes(password: str,
-                        ruta_clave_privada: str = "clave_privada.pem",
-                        ruta_clave_cifrada: str = "clave_aes_cifrada.bin",
-                        ruta_salt: str = "salt.bin") -> bytes:
-    """
-    Descifra la clave AES que fue cifrada con la clave pública RSA.
-    Requiere la contraseña para descifrar la clave privada RSA.
-    """
-    # Leer salt y derivar clave simétrica para la clave privada
-    with open(ruta_salt, "rb") as f:
-        salt = f.read()
+# La contraseña la coges de la variable de entorno
+password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
 
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100_000,
-        backend=default_backend()
-    )
-    clave_para_privada = kdf.derive(password.encode())
-
-    # Cargar la clave privada protegida por contraseña
-    with open(ruta_clave_privada, "rb") as f:
-        private_key = serialization.load_pem_private_key(
-            f.read(),
-            password=clave_para_privada,
-            backend=default_backend()
-        )
-
-    # Leer clave AES cifrada
-    with open(ruta_clave_cifrada, "rb") as f:
-        clave_cifrada = f.read()
-
-    # Descifrar clave AES con RSA privada
-    clave_aes = private_key.decrypt(
-        clave_cifrada,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-
-    return clave_aes
+# Salt fijo (mejor guardarlo y usar siempre el mismo para que derive la misma clave)
+salt_b64 = os.getenv("SALT")
+salt = base64.b64decode(salt_b64)
 
 
-def cifrar_texto(texto: str, ruta_clave_publica: str = "clave_publica.pem") -> bytes:
-    """Cifra un texto plano con la clave pública RSA."""
-    with open(ruta_clave_publica, "rb") as f:
-        public_key = serialization.load_pem_public_key(f.read())
+def cifrar_aes(mensaje, clave):
+    padder = sym_padding.PKCS7(128).padder()
+    mensaje_padded = padder.update(mensaje) + padder.finalize()
 
-    texto_bytes = texto.encode()
-    cifrado = public_key.encrypt(
-        texto_bytes,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return cifrado
-
-def descifrar_texto(contenido_cifrado: bytes, password: str,
-                    ruta_clave_privada: str = "clave_privada.pem",
-                    ruta_salt: str = "salt.bin") -> str:
-    """Descifra un contenido cifrado con clave privada RSA protegida con contraseña."""
-    # Cargar salt
-    with open(ruta_salt, "rb") as f:
-        salt = f.read()
-
-    # Derivar la clave de la contraseña
-    clave_simetrica = derivar_clave(password, salt)
-
-    # Cargar y descifrar la clave privada
-    with open(ruta_clave_privada, "rb") as f:
-        private_key = serialization.load_pem_private_key(
-            f.read(),
-            password=clave_simetrica,
-            backend=default_backend()
-        )
-
-    texto_descifrado = private_key.decrypt(
-        contenido_cifrado,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return texto_descifrado.decode()
-
-
-def registrar_resultado_cifrado_hibrido(resultado: str, public_key_path: str, ruta_fichero: str = "Ganadores.txt"):
-    # Leer clave pública
-    with open(public_key_path, 'rb') as f:
-        public_key = serialization.load_pem_public_key(f.read(), backend=default_backend())
-
-    # Generar clave AES y cifrar el mensaje
-    clave_aes = os.urandom(32)
     iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(clave_aes), modes.CFB(iv))
+    cipher = Cipher(algorithms.AES(clave), modes.CBC(iv), backend=default_backend())
     encryptor = cipher.encryptor()
 
-    try:
-        with open(ruta_fichero, 'rb') as f:
-            datos_previos = f.read()
-            texto_plano = datos_previos.decode() + resultado + "\n"
-    except FileNotFoundError:
-        texto_plano = resultado + "\n"
+    ciphertext = encryptor.update(mensaje_padded) + encryptor.finalize()
+    return base64.b64encode(iv + ciphertext).decode()
 
-    texto_cifrado = encryptor.update(texto_plano.encode()) + encryptor.finalize()
+def descifrar_aes(token_b64, clave):
+    data = base64.b64decode(token_b64.encode())
+    iv = data[:16]
+    ciphertext = data[16:]
 
-    # Cifrar la clave AES con RSA
-    clave_aes_cifrada = public_key.encrypt(
-        clave_aes,
-        padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
-    )
-
-    # Guardar todo como JSON binario
-    datos_finales = {
-        "clave_cifrada": base64.b64encode(clave_aes_cifrada).decode(),
-        "iv": base64.b64encode(iv).decode(),
-        "contenido": base64.b64encode(texto_cifrado).decode()
-    }
-    with open(ruta_fichero, 'w') as f:
-        json.dump(datos_finales, f)
-
-
-def leer_resultados_descifrados(private_key_path: str, password: str, ruta_fichero: str = "Ganadores.txt"):
-    # Leer archivo
-    with open(ruta_fichero, 'r') as f:
-        datos = json.load(f)
-
-    clave_cifrada = base64.b64decode(datos["clave_cifrada"])
-    iv = base64.b64decode(datos["iv"])
-    contenido_cifrado = base64.b64decode(datos["contenido"])
-
-    # Cargar clave privada con la contraseña
-    with open(private_key_path, 'rb') as f:
-        contenido = f.read()
-        salt = contenido[:16]
-        encrypted_key = contenido[16:]
-
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(), length=32, salt=salt,
-            iterations=100_000, backend=default_backend()
-        )
-        key = kdf.derive(password.encode())
-
-        private_key = serialization.load_pem_private_key(
-            encrypted_key,
-            password=key,
-            backend=default_backend()
-        )
-
-    # Descifrar clave AES
-    clave_aes = private_key.decrypt(
-        clave_cifrada,
-        padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
-    )
-
-    # Descifrar contenido
-    cipher = Cipher(algorithms.AES(clave_aes), modes.CFB(iv))
+    cipher = Cipher(algorithms.AES(clave), modes.CBC(iv), backend=default_backend())
     decryptor = cipher.decryptor()
-    texto = decryptor.update(contenido_cifrado) + decryptor.finalize()
 
+    mensaje_padded = decryptor.update(ciphertext) + decryptor.finalize()
+    unpadder = sym_padding.PKCS7(128).unpadder()
+    mensaje = unpadder.update(mensaje_padded) + unpadder.finalize()
 
-    return texto.decode()
+    return mensaje
 
+def derivar_clave(password, salt):
+    # Derivar la clave AES con PBKDF2HMAC
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,        # clave de 32 bytes para AES-256
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
 
+    clave = kdf.derive(password)  # clave derivada para usar en AES
+    return clave
 
+def registrar_resultado(mensaje):
+    clave = derivar_clave()
+    mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
+    timestamp = datetime.now().isoformat()
+    
+    with open("Historial.txt", "a") as f:
+        f.write(f"{timestamp}::{mensaje_cifrado}\n")
+
+def mostrar_resultados():
+    clave = derivar_clave()
+    resultados = []
+    if os.path.exists("Historial.txt"):
+        with open("Historial.txt", "r") as f:
+            for linea in f:
+                mensaje_cifrado = linea.strip()
+                if mensaje_cifrado:
+                    mensaje_descifrado = descifrar_aes(mensaje_cifrado, clave)
+                    resultados.append(mensaje_descifrado.decode())
+
+    return resultados
 
 
 
@@ -227,8 +115,7 @@ class Parametros:
 class Cartas:
     cartas = {
         "UNO": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
-            "6": 6, "7": 7, "8": 8, "9": 9,
+            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
             "+2": 20, "BLOQUEO": 20, "DIRECCION": 20,
             "COLOR": 50, "+4": 50
         },
@@ -238,33 +125,22 @@ class Cartas:
         },
 
         "DOS": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
-            "6": 6, "7": 7, "8": 8, "9": 9,
+            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
             "#": 40, "COMODIN": 20
         },
 
         "UNO ALL WILD": {"COLOR": 20, "DIRECCION": 50, "BLOQUEO": 50, "BLOQUEO DOBLE": 50, "+2": 50, "+4": 50, "CAMBIO FORZOSO": 50, "COMODIN +2": 50
         },
 
-
         "UNO_TEAMS": {
             "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-            "BLOQUEO": 20, "DIRECCION": 20, "Pase": 20, "+4": 50, "Comodín": 50,
+            "ESPECIAL": 20, "COMODIN": 50,
         },
+
         "UNO_FLEX": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "+2": 20, "BLOQUEO": 20, "DIRECCION": 20, "COLOR": 50, "+4": 50,
-
-            "Carta de Poder": 50,
-            "Carta Flex": 20,
-            "Acción Flex Saltar Todos": 50,
-            "Acción Flex Robar Cartas": 50,
-            "Comodín Flex Cambia Color": 50,
-            "Comodín Flex Roba Cartas": 50,
+            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8,
+            "ESPECIAL": 20, "COMODIN": 20
         }
-
-
-
-
     }
 
     @staticmethod
@@ -422,7 +298,7 @@ elif pagina == "🔧 Configuración":
 # NOTAS - añadir opción de añadir puntos totales manualmente
 # CORRECCIONES: a la hora de seleccionar el ganador, tengo que pulsar 2 veces el botón de confirmar
 # Al usar la aplicación en el móvil, los botones de los puntos se ven todos en vertical y además están desordenados.
-# Añadir un TOP al final de la partida con ls jugadores y sus puntos totales
+# Añadir un TOP al final de la partida con los jugadores y sus puntos totales
 elif pagina == "🎮 Juego":
     st.markdown("""
     <style>
@@ -646,7 +522,7 @@ elif pagina == "🎮 Juego":
                 mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
                 st.success(mensaje)
                 st.session_state.juego_bloqueado = True
-                registrar_resultado_cifrado_hibrido(mensaje, "clave_publica.pem")
+                registrar_resultado(mensaje)
 
         elif st.session_state.parametros.modalidad == "Partidas":
             max_partidas = st.session_state.parametros.puntos
@@ -656,7 +532,7 @@ elif pagina == "🎮 Juego":
                 mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
                 st.success(mensaje)
                 st.session_state.juego_bloqueado = True
-                registrar_resultado_cifrado_hibrido(mensaje, "clave_publica.pem")
+                registrar_resultado(mensaje)
 
 
         # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
@@ -671,7 +547,7 @@ elif pagina == "🎮 Juego":
                     mensaje = f"🏆 Empate entre: {nombres_ganadores} con {max_puntos} puntos."
                 
                 st.success(mensaje)
-                registrar_resultado_cifrado_hibrido(mensaje, "clave_publica.pem")
+                registrar_resultado(mensaje)
 
 
 
@@ -694,5 +570,15 @@ elif pagina == "Historial":
                 """, unsafe_allow_html=True)
     password = st.text_input("Introduzca la contraseña", type="password")
     if st.button("Confirmar"):
-        resultados = leer_resultados_descifrados("clave_privada.pem", password)
-        st.write(resultados)
+        # Usuario introduce contraseña
+        password_input = st.text_input("Introduce tu contraseña", type="password")
+
+        if password_input:
+            if password_input == password:
+                st.success("Contraseña correcta. Acceso concedido.")
+                resultados = mostrar_resultados()
+                for resultado in resultados:
+                    st.write(resultado)                
+
+            else:
+                st.error("Contraseña incorrecta. Acceso denegado.")
