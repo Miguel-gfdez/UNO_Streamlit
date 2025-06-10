@@ -18,11 +18,17 @@ from datetime import datetime
 # FUNCIONES DE CIFRADO
 # ========================
 # La contraseña la coges de la variable de entorno
-password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+CLAVE_AES = "hola"
+SALT = "u6P7H5df0Ks4rzLMgC0+Yj=="
+
+# La contraseña la coges de la variable de entorno
+# password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+password = CLAVE_AES.encode()
 
 # Salt fijo (mejor guardarlo y usar siempre el mismo para que derive la misma clave)
-salt_b64 = os.getenv("SALT")
-salt = base64.b64decode(salt_b64)
+# salt_b64 = os.getenv("SALT")
+# salt = base64.b64decode(salt_b64)
+salt = base64.b64decode(SALT)
 
 
 def cifrar_aes(mensaje, clave):
@@ -64,15 +70,17 @@ def derivar_clave(password, salt):
     return clave
 
 def registrar_resultado(mensaje):
-    clave = derivar_clave()
+    clave = derivar_clave(password, salt)
+
+    mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + mensaje
+
     mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
-    timestamp = datetime.now().isoformat()
     
     with open("Historial.txt", "a") as f:
-        f.write(f"{timestamp}::{mensaje_cifrado}\n")
+        f.write(f"{mensaje_cifrado}\n")
 
 def mostrar_resultados():
-    clave = derivar_clave()
+    clave = derivar_clave(password, salt)
     resultados = []
     if os.path.exists("Historial.txt"):
         with open("Historial.txt", "r") as f:
@@ -83,9 +91,6 @@ def mostrar_resultados():
                     resultados.append(mensaje_descifrado.decode())
 
     return resultados
-
-
-
 
 
 # ========================
@@ -150,6 +155,8 @@ class Cartas:
 # ========================
 # SESIÓN INICIAL
 # ========================
+if "victoria" not in st.session_state:
+    st.session_state.victoria = False
 
 if "jugadores" not in st.session_state:
     st.session_state.jugadores = []
@@ -512,6 +519,7 @@ elif pagina == "🎮 Juego":
             st.session_state.cartas_seleccionadas = {}
             st.session_state.nombre_jugador = ""
             st.session_state.partida_finalizada = False
+            st.session_state.victoria = False
             st.success("Puntuaciones reiniciadas.")
             st.rerun()
 
@@ -522,17 +530,21 @@ elif pagina == "🎮 Juego":
                 mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
                 st.success(mensaje)
                 st.session_state.juego_bloqueado = True
-                registrar_resultado(mensaje)
+                if st. session_state.victoria == False:
+                    registrar_resultado(mensaje)
+                    st.session_state.victoria = True
 
         elif st.session_state.parametros.modalidad == "Partidas":
             max_partidas = st.session_state.parametros.puntos
             partidas_ganadas_necesarias = math.ceil(max_partidas / 2)
             ganador = next((j for j in st.session_state.jugadores if j.puntos >= partidas_ganadas_necesarias), None)
             if ganador:
-                mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
+                mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos! \n\t Parámetros: {st.session_state.parametros.juego} - {st.session_state.parametros.modalidad} - {st.session_state.parametros.puntos}"
                 st.success(mensaje)
                 st.session_state.juego_bloqueado = True
-                registrar_resultado(mensaje)
+                if st. session_state.victoria == False:
+                    registrar_resultado(mensaje)
+                    st.session_state.victoria = True
 
 
         # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
@@ -547,7 +559,9 @@ elif pagina == "🎮 Juego":
                     mensaje = f"🏆 Empate entre: {nombres_ganadores} con {max_puntos} puntos."
                 
                 st.success(mensaje)
-                registrar_resultado(mensaje)
+                if st. session_state.victoria == False:
+                    registrar_resultado(mensaje)
+                    st.session_state.victoria = True
 
 
 
@@ -568,15 +582,15 @@ elif pagina == "Historial":
                     }
                     </style>
                 """, unsafe_allow_html=True)
-    password = st.text_input("Introduzca la contraseña", type="password")
+    password_input = st.text_input("Introduzca la contraseña", type="password")
     if st.button("Confirmar"):
-        # Usuario introduce contraseña
-        password_input = st.text_input("Introduce tu contraseña", type="password")
-
         if password_input:
-            if password_input == password:
+            if password_input == CLAVE_AES:
                 st.success("Contraseña correcta. Acceso concedido.")
+                st.subheader("Historial de Resultados")
                 resultados = mostrar_resultados()
+                if not resultados:
+                    st.info("No hay resultados disponibles.")
                 for resultado in resultados:
                     st.write(resultado)                
 
