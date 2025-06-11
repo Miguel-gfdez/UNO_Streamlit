@@ -613,7 +613,9 @@ elif pagina == "Historial":
                     </style>
                 """, unsafe_allow_html=True)
     password_input = st.text_input("Introduzca la contraseña", type="password")
-    st.warning(CLAVE_AES)
+    st.warning("con .encode()", CLAVE_AES)
+    st.warning("sin .encode()", CLAVE_AES = os.getenv("CLAVE_AES"))
+
     if st.button("Confirmar"):
         if password_input:
             if password_input == CLAVE_AES:
