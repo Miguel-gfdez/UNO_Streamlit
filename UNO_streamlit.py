@@ -613,12 +613,12 @@ elif pagina == "Historial":
                     </style>
                 """, unsafe_allow_html=True)
     password_input = st.text_input("Introduzca la contraseña", type="password")
-    st.warning("con .encode()", CLAVE_AES)
-    st.warning("sin .encode()", CLAVE_AES = os.getenv("CLAVE_AES"))
-
+    st.warning(f"con .encode() {CLAVE_AES}")
+    st.warning(f"sin .encode() {os.getenv('CLAVE_AES')}")
+    
     if st.button("Confirmar"):
         if password_input:
-            if password_input == CLAVE_AES:
+            if password_input.encode() == CLAVE_AES:
                 st.success("Contraseña correcta. Acceso concedido. Descifrando resultados...")
                 st.subheader("Historial de Resultados")
                 resultados = mostrar_resultados()
