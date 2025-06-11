@@ -13,17 +13,11 @@ from bbdd import get_client
 # FUNCIONES DE CIFRADO
 # ========================
 # La contraseña la coges de la variable de entorno
-CLAVE_AES = "hola"
-SALT = "u6P7H5df0Ks4rzLMgC0+Yj=="
-
-# La contraseña la coges de la variable de entorno
-# password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-password = CLAVE_AES.encode()
+password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
 
 # Salt fijo (mejor guardarlo y usar siempre el mismo para que derive la misma clave)
-# salt_b64 = os.getenv("SALT")
-# salt = base64.b64decode(salt_b64)
-salt = base64.b64decode(SALT)
+salt_b64 = os.getenv("SALT")
+salt = base64.b64decode(salt_b64)
 
 
 def cifrar_aes(mensaje, clave):

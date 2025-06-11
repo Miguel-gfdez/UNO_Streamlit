@@ -102,13 +102,6 @@ def cargar_sesion():
         st.session_state.cartas = Cartas.obtener_cartas(p["juego"])
 
 # ========================
-# FUNCIONES DE CIFRADO
-# ========================
-CLAVE_AES = "hola"
-# password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-
-
-# ========================
 # CLASES
 # ========================
 
@@ -170,6 +163,8 @@ class Cartas:
 # ========================
 # SESIÓN INICIAL
 # ========================
+CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+
 if "victoria" not in st.session_state:
     st.session_state.victoria = False
 
