@@ -8,10 +8,69 @@ from cryptography.hazmat.primitives import padding as sym_padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from datetime import datetime
+import json
 
 # ========================
 # INFORME LOGs GANADORES
 # ========================
+
+
+# ========================
+# FUNCIONES AUXILIARES
+# ========================
+def guardar_sesion():
+    if "jugadores" not in st.session_state or "parametros" not in st.session_state:
+        st.warning("No hay datos suficientes para guardar la sesión.")
+        return
+
+    if st.session_state.parametros is None:
+        st.warning("Los parámetros no están configurados todavía.")
+        return
+
+    # Convertimos los jugadores a formato serializable
+    jugadores_serializables = {
+        jugador.nombre: jugador.puntos for jugador in st.session_state.jugadores
+    }
+
+    datos = {
+        "jugadores": jugadores_serializables,
+        "parametros": [
+            st.session_state.parametros.juego,
+            st.session_state.parametros.modalidad,
+            st.session_state.parametros.puntos
+        ],
+        "juego_bloqueado": st.session_state.get("juego_bloqueado", False),
+        "partida_finalizada": st.session_state.get("partida_finalizada", False),
+        "victoria": st.session_state.get("victoria", False)
+    }
+
+    with open("CurrentSession.json", "w") as f:
+        json.dump(datos, f, indent=4)
+    st.success("Sesión guardada correctamente.")
+
+
+def cargar_sesion():
+    if os.path.exists("CurrentSession.json"):
+        with open("CurrentSession.json", "r") as f:
+            datos = json.load(f)
+
+        # Reconstruir jugadores como objetos
+        jugadores = [Jugador(nombre, puntos) for nombre, puntos in datos["jugadores"].items()]
+        st.session_state.jugadores = jugadores
+
+        # Reconstruir parámetros como objeto
+        juego, modalidad, puntos = datos["parametros"]
+        st.session_state.parametros = Parametros(juego, modalidad, puntos)
+
+        st.session_state.juego_bloqueado = datos.get("juego_bloqueado", False)
+        st.session_state.partida_finalizada = datos.get("partida_finalizada", False)
+        st.session_state.victoria = datos.get("victoria", False)
+        st.session_state.inicio = True
+        st.session_state.cartas
+
+        st.success("Sesión cargada correctamente.")
+
+
 
 
 # ========================
@@ -161,8 +220,8 @@ if "victoria" not in st.session_state:
 if "jugadores" not in st.session_state:
     st.session_state.jugadores = []
 
-if "fase" not in st.session_state:
-    st.session_state.fase = "inicio"
+if "inicio" not in st.session_state:
+    st.session_state.inicio = False
 
 if "parametros" not in st.session_state:
     st.session_state.parametros = None
@@ -242,7 +301,8 @@ if pagina == "👥 Jugadores":
 
     if st.button("Resetear Jugadores"):
         st.session_state.jugadores = []
-        st.success("Lista de jugadores reiniciada.")
+        st.rerun()
+        # st.success("Lista de jugadores reiniciada.")
 
 # ========================
 # CONFIGURACIÓN DEL JUEGO
@@ -291,8 +351,8 @@ elif pagina == "🔧 Configuración":
             else:
                 st.session_state.parametros = Parametros(juego, modalidad, 0)
                 st.success("Parámetros configurados correctamente.")
-
-
+        st.session_state.inicio = True
+        guardar_sesion()
 
     if st.session_state.parametros:
         st.info(st.session_state.parametros.ver_parametros())
@@ -307,6 +367,8 @@ elif pagina == "🔧 Configuración":
 # Al usar la aplicación en el móvil, los botones de los puntos se ven todos en vertical y además están desordenados.
 # Añadir un TOP al final de la partida con los jugadores y sus puntos totales
 elif pagina == "🎮 Juego":
+    if os.path.exists("CurrentSession.json") and not st.session_state.inicio:
+        cargar_sesion()
     st.markdown("""
     <style>
     div.stButton > button {
@@ -361,6 +423,7 @@ elif pagina == "🎮 Juego":
                                     j.puntos += 1
                                     contador_partidas += 1
                             st.success(f"{nombre_jugador} ha ganado 1 punto.")
+                            guardar_sesion()
                         else:
                             st.warning("El nombre no coincide con ningún jugador.")
 
@@ -463,6 +526,7 @@ elif pagina == "🎮 Juego":
                                             if j.nombre == nombre_jugador:
                                                 j.puntos += total_puntos
                                                 st.success(f"{j.nombre} gana {total_puntos} puntos.")
+                                                guardar_sesion()
                                         st.session_state.cartas_seleccionadas = {}
                                         st.session_state.nombre_jugador = None
                                         st.rerun()
@@ -478,6 +542,7 @@ elif pagina == "🎮 Juego":
                         if st.button("Finalizar partida"):
                             st.session_state.partida_finalizada = True
                             st.session_state.juego_bloqueado = True
+                            guardar_sesion()
 
 
                 elif modalidad == "Libre-Partidas":
@@ -497,6 +562,7 @@ elif pagina == "🎮 Juego":
                                 if j.nombre == nombre_jugador:
                                     j.puntos += puntos_a_sumar
                                     st.success(f"{j.nombre} suma {puntos_a_sumar} puntos.")
+                                    guardar_sesion()
                         else:
                             st.warning("El nombre no coincide con ningún jugador.")
 
@@ -504,6 +570,7 @@ elif pagina == "🎮 Juego":
                     if st.button("Finalizar partida"):
                         st.session_state.partida_finalizada = True
                         st.session_state.juego_bloqueado = True
+                        guardar_sesion()
 
 
         # Mostrar tabla de puntuación actual
@@ -521,6 +588,7 @@ elif pagina == "🎮 Juego":
             st.session_state.partida_finalizada = False
             st.session_state.victoria = False
             st.success("Puntuaciones reiniciadas.")
+            guardar_sesion()
             st.rerun()
 
         # Lógica fin de partida para modos que terminan automático
@@ -533,6 +601,7 @@ elif pagina == "🎮 Juego":
                 if st. session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
+                    guardar_sesion()
 
         elif st.session_state.parametros.modalidad == "Partidas":
             max_partidas = st.session_state.parametros.puntos
@@ -545,6 +614,7 @@ elif pagina == "🎮 Juego":
                 if st. session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
+                    guardar_sesion()
 
 
         # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
@@ -562,6 +632,7 @@ elif pagina == "🎮 Juego":
                 if st. session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
+                    guardar_sesion()
 
 
 
