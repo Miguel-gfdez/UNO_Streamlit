@@ -1,14 +1,13 @@
 import streamlit as st
 import math
-from cryptography.hazmat.backends import default_backend
-import base64
 import os
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding as sym_padding
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
+import base64
 from datetime import datetime
 import json
+
+
+from bbdd import get_client
+from cifrado import registrar_resultado, mostrar_resultados
 
 # ========================
 # INFORME LOGs GANADORES
@@ -18,138 +17,95 @@ import json
 # ========================
 # FUNCIONES AUXILIARES
 # ========================
-def guardar_sesion():
-    if "jugadores" not in st.session_state or "parametros" not in st.session_state:
-        st.warning("No hay datos suficientes para guardar la sesión.")
+def almacenar_jugadores(accion, parametro=None, nombre_original=None, nombre_nuevo=None, jugador_nuevo=None):
+    client = get_client()
+
+    jugadores = st.session_state.get("jugadores", [])
+
+    if accion == "eliminar":
+        if not jugadores:
+            # Borrar todos los registros si no hay jugadores en sesión
+            client.table("Jugadores").delete().neq("id", 0).execute()
+        elif parametro == "nombre" and nombre_original:
+            # Borrar un jugador específico por nombre
+            client.table("Jugadores").delete().eq("nombre", nombre_original).execute()
         return
 
+    elif accion == "añadir":
+        # Insertar todos los jugadores
+        if jugador_nuevo:
+            client.table("Jugadores").insert({
+                "nombre": jugador_nuevo.nombre,
+                "puntuacion": jugador_nuevo.puntos
+            }).execute()
+
+    elif accion == "modificar":
+        if parametro == "valor":
+            for jugador in jugadores:
+                client.table("Jugadores").update({
+                    "puntuacion": jugador.puntos
+                }).eq("nombre", jugador.nombre).execute()
+
+        elif parametro == "nombre" and nombre_original and nombre_nuevo:
+            client.table("Jugadores").update({
+                "nombre": nombre_nuevo
+            }).eq("nombre", nombre_original).execute()
+
+def almacenar_parametros(accion):
     if st.session_state.parametros is None:
-        st.warning("Los parámetros no están configurados todavía.")
+        return
+    
+    client = get_client()
+
+    if accion == "eliminar":
+        # Eliminar todos los parámetros existentes
+        client.table("Parametros").delete().neq("id", 0).execute()
         return
 
-    # Convertimos los jugadores a formato serializable
-    jugadores_serializables = {
-        jugador.nombre: jugador.puntos for jugador in st.session_state.jugadores
-    }
+    elif accion == "guardar":
+        # Primero eliminar cualquier fila anterior
+        client.table("Parametros").delete().neq("id", 0).execute()
 
-    datos = {
-        "jugadores": jugadores_serializables,
-        "parametros": [
-            st.session_state.parametros.juego,
-            st.session_state.parametros.modalidad,
-            st.session_state.parametros.puntos
-        ],
-        "juego_bloqueado": st.session_state.get("juego_bloqueado", False),
-        "partida_finalizada": st.session_state.get("partida_finalizada", False),
-        "victoria": st.session_state.get("victoria", False)
-    }
+        # Luego insertar los nuevos parámetros
+        parametros = {
+            "time": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "juego": st.session_state.parametros.juego,
+            "modalidad": st.session_state.parametros.modalidad,
+            "puntos": st.session_state.parametros.puntos,
+            "juego_bloqueado": st.session_state.get("juego_bloqueado", False),
+            "partida_finalizada": st.session_state.get("partida_finalizada", False),
+            "victoria": st.session_state.get("victoria", False)
+        }
 
-    with open("CurrentSession.json", "w") as f:
-        json.dump(datos, f, indent=4)
-    st.success("Sesión guardada correctamente.")
-
+        client.table("Parametros").insert(parametros).execute()
 
 def cargar_sesion():
-    if os.path.exists("CurrentSession.json"):
-        with open("CurrentSession.json", "r") as f:
-            datos = json.load(f)
+    client = get_client()
 
-        # Reconstruir jugadores como objetos
-        jugadores = [Jugador(nombre, puntos) for nombre, puntos in datos["jugadores"].items()]
+    # Obtener todos los jugadores
+    res_jugadores = client.table("Jugadores").select("*").execute()
+    jugadores = []
+    if res_jugadores.data:
+        for jugador in res_jugadores.data:
+            jugadores.append(Jugador(jugador["nombre"], jugador["puntos"]))
         st.session_state.jugadores = jugadores
 
-        # Reconstruir parámetros como objeto
-        juego, modalidad, puntos = datos["parametros"]
-        st.session_state.parametros = Parametros(juego, modalidad, puntos)
-
-        st.session_state.juego_bloqueado = datos.get("juego_bloqueado", False)
-        st.session_state.partida_finalizada = datos.get("partida_finalizada", False)
-        st.session_state.victoria = datos.get("victoria", False)
+    # Obtener los últimos parámetros
+    res_parametros = client.table("Parametros").select("*").order("id", desc=True).limit(1).execute()
+    if res_parametros.data:
+        p = res_parametros.data[0]
+        st.session_state.parametros = Parametros(p["juego"], p["modalidad"], p["puntos"])
+        st.session_state.juego_bloqueado = p.get("juego_bloqueado", False)
+        st.session_state.partida_finalizada = p.get("partida_finalizada", False)
+        st.session_state.victoria = p.get("victoria", False)
         st.session_state.inicio = True
-        st.session_state.cartas
-
-        st.success("Sesión cargada correctamente.")
-
-
-
+        st.session_state.cartas = Cartas.obtener_cartas(p["juego"])
 
 # ========================
 # FUNCIONES DE CIFRADO
 # ========================
-# La contraseña la coges de la variable de entorno
 CLAVE_AES = "hola"
-SALT = "u6P7H5df0Ks4rzLMgC0+Yj=="
-
-# La contraseña la coges de la variable de entorno
 # password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-password = CLAVE_AES.encode()
-
-# Salt fijo (mejor guardarlo y usar siempre el mismo para que derive la misma clave)
-# salt_b64 = os.getenv("SALT")
-# salt = base64.b64decode(salt_b64)
-salt = base64.b64decode(SALT)
-
-
-def cifrar_aes(mensaje, clave):
-    padder = sym_padding.PKCS7(128).padder()
-    mensaje_padded = padder.update(mensaje) + padder.finalize()
-
-    iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(clave), modes.CBC(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-
-    ciphertext = encryptor.update(mensaje_padded) + encryptor.finalize()
-    return base64.b64encode(iv + ciphertext).decode()
-
-def descifrar_aes(token_b64, clave):
-    data = base64.b64decode(token_b64.encode())
-    iv = data[:16]
-    ciphertext = data[16:]
-
-    cipher = Cipher(algorithms.AES(clave), modes.CBC(iv), backend=default_backend())
-    decryptor = cipher.decryptor()
-
-    mensaje_padded = decryptor.update(ciphertext) + decryptor.finalize()
-    unpadder = sym_padding.PKCS7(128).unpadder()
-    mensaje = unpadder.update(mensaje_padded) + unpadder.finalize()
-
-    return mensaje
-
-def derivar_clave(password, salt):
-    # Derivar la clave AES con PBKDF2HMAC
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,        # clave de 32 bytes para AES-256
-        salt=salt,
-        iterations=100000,
-        backend=default_backend()
-    )
-
-    clave = kdf.derive(password)  # clave derivada para usar en AES
-    return clave
-
-def registrar_resultado(mensaje):
-    clave = derivar_clave(password, salt)
-
-    mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + mensaje
-
-    mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
-    
-    with open("Historial.txt", "a") as f:
-        f.write(f"{mensaje_cifrado}\n")
-
-def mostrar_resultados():
-    clave = derivar_clave(password, salt)
-    resultados = []
-    if os.path.exists("Historial.txt"):
-        with open("Historial.txt", "r") as f:
-            for linea in f:
-                mensaje_cifrado = linea.strip()
-                if mensaje_cifrado:
-                    mensaje_descifrado = descifrar_aes(mensaje_cifrado, clave)
-                    resultados.append(mensaje_descifrado.decode())
-
-    return resultados
 
 
 # ========================
@@ -236,7 +192,6 @@ pagina = st.sidebar.radio("Navegar a:", ["🎮 Juego", "👥 Jugadores", "🔧 C
 # ========================
 # GESTIÓN DE JUGADORES
 # ========================
-
 if pagina == "👥 Jugadores":
     st.title("Gestión de Jugadores")
     st.markdown("""
@@ -264,7 +219,9 @@ if pagina == "👥 Jugadores":
         if st.button("Añadir Jugador"):
             if nombre and not any(j.nombre == nombre for j in st.session_state.jugadores):
                 st.session_state.jugadores.append(Jugador(nombre))
+                almacenar_jugadores("añadir", jugador_nuevo=Jugador(nombre))
                 st.success(f"{nombre} añadido.")
+
             else:
                 st.warning("Nombre vacío o duplicado.")
 
@@ -274,7 +231,9 @@ if pagina == "👥 Jugadores":
                 st.warning("No se puede eliminar más jugadores. Mínimo 2 jugadores.")
             elif nombre and any(j.nombre == nombre for j in st.session_state.jugadores):
                 st.session_state.jugadores = [j for j in st.session_state.jugadores if j.nombre != nombre]
+                almacenar_jugadores("eliminar", "nombre", nombre_original=nombre)
                 st.success(f"{nombre} eliminado.")
+
             else:
                 st.warning("Nombre vacío o no existe.")
 
@@ -290,7 +249,9 @@ if pagina == "👥 Jugadores":
             else:
                 for j in st.session_state.jugadores:
                     if j.nombre == nombre:
+                        nombre_original = nombre
                         j.nombre = nuevo_nombre
+                        almacenar_jugadores("modificar", "nombre", nombre_original=nombre_original, nombre_nuevo=nuevo_nombre)
                         st.success(f"{nombre} cambiado a {nuevo_nombre}.")
                         break
 
@@ -301,13 +262,12 @@ if pagina == "👥 Jugadores":
 
     if st.button("Resetear Jugadores"):
         st.session_state.jugadores = []
+        almacenar_jugadores("eliminar")
         st.rerun()
-        # st.success("Lista de jugadores reiniciada.")
 
 # ========================
 # CONFIGURACIÓN DEL JUEGO
 # ========================
-
 elif pagina == "🔧 Configuración":
     st.markdown("""
     <style>
@@ -326,6 +286,9 @@ elif pagina == "🔧 Configuración":
     </style>
 """, unsafe_allow_html=True)
     st.title("Configuración del Juego")
+    if len(st.session_state.jugadores) < 2:
+        st.warning(f"Añadir al menos 2 jugadores - Actualmente {len(st.session_state.jugadores)} jugador/es.")
+        st.stop()
 
     # Opciones con valor por defecto vacío usando "" como primera opción
     juego = st.selectbox("Elige el juego", ["", "UNO", "UNO FLIP", "UNO ALL WILD", "UNO TEAMS", "UNO FLEX", "DOS"])
@@ -341,27 +304,29 @@ elif pagina == "🔧 Configuración":
                     st.warning("El límite de partidas no es válido.")
                 else:
                     st.session_state.parametros = Parametros(juego, modalidad, limite)
+                    st.session_state.inicio = True
+                    almacenar_parametros("guardar")
                     st.success("Parámetros configurados correctamente.")
             elif modalidad == "Incremento":
                 if limite < 100:
                     st.warning("El límite de puntos debe ser mayor o igual a 100.")
                 else:
                     st.session_state.parametros = Parametros(juego, modalidad, limite)
+                    st.session_state.inicio = True
+                    almacenar_parametros("guardar")
                     st.success("Parámetros configurados correctamente.")
             else:
                 st.session_state.parametros = Parametros(juego, modalidad, 0)
+                st.session_state.inicio = True
+                almacenar_parametros("guardar")
                 st.success("Parámetros configurados correctamente.")
-        st.session_state.inicio = True
-        guardar_sesion()
 
     if st.session_state.parametros:
         st.info(st.session_state.parametros.ver_parametros())
 
-
 # ========================
 # JUEGO
 # ========================
-
 # NOTAS - añadir opción de añadir puntos totales manualmente
 # CORRECCIONES: a la hora de seleccionar el ganador, tengo que pulsar 2 veces el botón de confirmar
 # Al usar la aplicación en el móvil, los botones de los puntos se ven todos en vertical y además están desordenados.
@@ -411,24 +376,24 @@ elif pagina == "🎮 Juego":
             st.warning("🏁 La partida ha finalizado. Reinicia las puntuaciones para comenzar una nueva ronda.")
         else:
             if nombre_jugador == "":
-                st.warning("Por favor, selecciona un jugador.")
+                st.warning("Por favor, seleccione un jugador.")
             else:
                 modalidad = st.session_state.parametros.modalidad
 
                 if modalidad == "Partidas":
-                    if st.button("Confirmar jugador"):
+                    st.info(f"Jugador seleccionado: **{nombre_jugador}**")
+                    if st.button("Confirmar ganador"):
                         if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
                             for j in st.session_state.jugadores:
                                 if j.nombre == nombre_jugador:
                                     j.puntos += 1
                                     contador_partidas += 1
+                            almacenar_jugadores("modificar", "valor")
                             st.success(f"{nombre_jugador} ha ganado 1 punto.")
-                            guardar_sesion()
                         else:
                             st.warning("El nombre no coincide con ningún jugador.")
 
                 elif modalidad in ["Incremento", "Libre-Puntos"]:
-                    st.title("Gestión de Jugadores")
                     st.markdown("""
                     <style>
                     div.stButton > button {
@@ -458,7 +423,7 @@ elif pagina == "🎮 Juego":
                         st.session_state.modo_editar_seleccion = False
 
                     if st.session_state.nombre_jugador is None:
-                        if st.button("Confirmar jugador", key="btn_confirmar_jugador"):
+                        if st.button("Confirmar ganador", key="btn_confirmar_jugador"):
                             if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
                                 st.session_state.nombre_jugador = nombre_jugador
                                 st.info(f"Jugador seleccionado: **{nombre_jugador}**")
@@ -525,8 +490,8 @@ elif pagina == "🎮 Juego":
                                         for j in st.session_state.jugadores:
                                             if j.nombre == nombre_jugador:
                                                 j.puntos += total_puntos
+                                                almacenar_jugadores("modificar", "valor")
                                                 st.success(f"{j.nombre} gana {total_puntos} puntos.")
-                                                guardar_sesion()
                                         st.session_state.cartas_seleccionadas = {}
                                         st.session_state.nombre_jugador = None
                                         st.rerun()
@@ -542,15 +507,12 @@ elif pagina == "🎮 Juego":
                         if st.button("Finalizar partida"):
                             st.session_state.partida_finalizada = True
                             st.session_state.juego_bloqueado = True
-                            guardar_sesion()
-
 
                 elif modalidad == "Libre-Partidas":
                     # Para ambos modos, la mecánica es similar (sumar puntos o partidas)
                     # Pero sin terminar automáticamente
-                    st.subheader("Añadir puntos a jugador")
-
-                    if st.button("Confirmar jugador"):
+                    st.info(f"Jugador seleccionado: **{nombre_jugador}**")
+                    if st.button("Confirmar ganador"):
                         if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
                             puntos_a_sumar = 1 if modalidad == "Libre-Partidas" else 0
 
@@ -561,8 +523,8 @@ elif pagina == "🎮 Juego":
                             for j in st.session_state.jugadores:
                                 if j.nombre == nombre_jugador:
                                     j.puntos += puntos_a_sumar
+                                    almacenar_jugadores("modificar", "valor")
                                     st.success(f"{j.nombre} suma {puntos_a_sumar} puntos.")
-                                    guardar_sesion()
                         else:
                             st.warning("El nombre no coincide con ningún jugador.")
 
@@ -570,7 +532,6 @@ elif pagina == "🎮 Juego":
                     if st.button("Finalizar partida"):
                         st.session_state.partida_finalizada = True
                         st.session_state.juego_bloqueado = True
-                        guardar_sesion()
 
 
         # Mostrar tabla de puntuación actual
@@ -587,8 +548,9 @@ elif pagina == "🎮 Juego":
             st.session_state.nombre_jugador = ""
             st.session_state.partida_finalizada = False
             st.session_state.victoria = False
+            almacenar_jugadores("modificar", "valor")
+            almacenar_parametros("guardar")
             st.success("Puntuaciones reiniciadas.")
-            guardar_sesion()
             st.rerun()
 
         # Lógica fin de partida para modos que terminan automático
@@ -601,7 +563,8 @@ elif pagina == "🎮 Juego":
                 if st. session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
-                    guardar_sesion()
+                    almacenar_jugadores("modificar", "valor")
+                    almacenar_parametros("guardar")
 
         elif st.session_state.parametros.modalidad == "Partidas":
             max_partidas = st.session_state.parametros.puntos
@@ -614,8 +577,8 @@ elif pagina == "🎮 Juego":
                 if st. session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
-                    guardar_sesion()
-
+                    almacenar_jugadores("modificar", "valor")
+                    almacenar_parametros("guardar")
 
         # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
         elif st.session_state.parametros.modalidad in ["Libre-Partidas", "Libre-Puntos"]:
@@ -632,7 +595,8 @@ elif pagina == "🎮 Juego":
                 if st. session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
-                    guardar_sesion()
+                    almacenar_jugadores("modificar", "valor")
+                    almacenar_parametros("guardar")
 
 
 
@@ -657,7 +621,7 @@ elif pagina == "Historial":
     if st.button("Confirmar"):
         if password_input:
             if password_input == CLAVE_AES:
-                st.success("Contraseña correcta. Acceso concedido.")
+                st.success("Contraseña correcta. Acceso concedido. Descifrando resultados...")
                 st.subheader("Historial de Resultados")
                 resultados = mostrar_resultados()
                 if not resultados:
