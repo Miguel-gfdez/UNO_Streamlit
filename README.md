@@ -57,4 +57,11 @@ La aplicación facilita la selección dinámica de cartas jugadas por cada jugad
 - Implementar autenticación de usuarios con Supabase para control de acceso.
 - Mantener un registro de sesiones o partidas independientes para que varios usuarios puedan usar la aplicación simultáneamente sin interferir en las partidas de otros, asegurando la correcta gestión de estados y datos en ambientes multiusuario.
 
+---
+
+## Demo en línea
+
+Puedes probar la aplicación en línea aquí:  
+[https://share.streamlit.io/tu_usuario/tu_repositorio/main/app.py](https://puntoslive.streamlit.app/)
+
 
