@@ -509,9 +509,10 @@ def main():
                             else:
                                 st.session_state.cartas_seleccionadas[carta] = 1
 
+
                         def mostrar_cartas(cartas):
                             carta_items = list(cartas.items())
-                            columnas_por_fila = 3  # Ajusta a 2 si quieres aún más adaptable
+                            columnas_por_fila = 2 if st.runtime.scriptrunner.get_script_run_context().is_running_with_streamlit else 3  # for web, use 3
 
                             for i in range(0, len(carta_items), columnas_por_fila):
                                 cols = st.columns(columnas_por_fila)
@@ -521,6 +522,7 @@ def main():
                                         with cols[j]:
                                             if st.button(f"{carta}", key=f"carta_{carta}"):
                                                 agregar_carta(carta)
+
 
                         st.markdown("""
                         <style>
