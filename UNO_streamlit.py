@@ -1,167 +1,16 @@
-import streamlit as st
-import math
 import os
-import base64
-from datetime import datetime
-import json
+import math
+import streamlit as st
 
-
-from bbdd import get_client, borrar_datos_bd
+from clases import Jugador, Parametros, Cartas
+from utils import mostrar_podio, aplicar_estilos_botones
 from cifrado import registrar_resultado, mostrar_resultados
-
-# ========================
-# INFORME LOGs GANADORES
-# ========================
+from bbdd import get_client, borrar_datos_bd, almacenar_jugadores, almacenar_parametros, cargar_sesion
 
 
 # ========================
 # FUNCIONES AUXILIARES
 # ========================
-def almacenar_jugadores(accion, parametro=None, nombre_original=None, nombre_nuevo=None, jugador_nuevo=None):
-    client = get_client()
-
-    jugadores = st.session_state.get("jugadores", [])
-
-    if accion == "eliminar":
-        if not jugadores:
-            # Borrar todos los registros si no hay jugadores en sesión
-            client.table("Jugadores").delete().neq("id", 0).execute()
-        elif parametro == "nombre" and nombre_original:
-            # Borrar un jugador específico por nombre
-            client.table("Jugadores").delete().eq("nombre", nombre_original).execute()
-        return
-
-    elif accion == "añadir":
-        # Insertar todos los jugadores
-        if jugador_nuevo:
-            client.table("Jugadores").insert({
-                "nombre": jugador_nuevo.nombre,
-                "puntuacion": jugador_nuevo.puntos
-            }).execute()
-
-    elif accion == "modificar":
-        if parametro == "valor":
-            for jugador in jugadores:
-                client.table("Jugadores").update({
-                    "puntuacion": jugador.puntos
-                }).eq("nombre", jugador.nombre).execute()
-
-        elif parametro == "nombre" and nombre_original and nombre_nuevo:
-            client.table("Jugadores").update({
-                "nombre": nombre_nuevo
-            }).eq("nombre", nombre_original).execute()
-
-def almacenar_parametros(accion):
-    if st.session_state.parametros is None:
-        return
-    
-    client = get_client()
-
-    if accion == "eliminar":
-        # Eliminar todos los parámetros existentes
-        client.table("Parametros").delete().neq("id", 0).execute()
-        return
-
-    elif accion == "guardar":
-        # Primero eliminar cualquier fila anterior
-        client.table("Parametros").delete().neq("id", 0).execute()
-
-        # Luego insertar los nuevos parámetros
-        parametros = {
-            "time": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-            "juego": st.session_state.parametros.juego,
-            "modalidad": st.session_state.parametros.modalidad,
-            "puntos": st.session_state.parametros.puntos,
-            "juego_bloqueado": st.session_state.get("juego_bloqueado", False),
-            "partida_finalizada": st.session_state.get("partida_finalizada", False),
-            "victoria": st.session_state.get("victoria", False)
-        }
-
-        client.table("Parametros").insert(parametros).execute()
-
-def cargar_sesion():
-    client = get_client()
-
-    # Obtener todos los jugadores
-    res_jugadores = client.table("Jugadores").select("*").execute()
-    jugadores = []
-    if res_jugadores.data:
-        for jugador in res_jugadores.data:
-            jugadores.append(Jugador(jugador["nombre"], jugador["puntuacion"]))
-        st.session_state.jugadores = jugadores
-
-    # Obtener los últimos parámetros
-    res_parametros = client.table("Parametros").select("*").order("id", desc=True).limit(1).execute()
-    if res_parametros.data:
-        p = res_parametros.data[0]
-        st.session_state.parametros = Parametros(p["juego"], p["modalidad"], p["puntos"])
-        st.session_state.juego_bloqueado = p.get("juego_bloqueado", False)
-        st.session_state.partida_finalizada = p.get("partida_finalizada", False)
-        st.session_state.victoria = p.get("victoria", False)
-        st.session_state.inicio = True
-        st.session_state.cartas = Cartas.obtener_cartas(p["juego"])
-
-def mostrar_podio(jugadores):
-    import streamlit as st
-    from collections import defaultdict
-
-    # Ordenamos jugadores por puntos descendente
-    jugadores_ordenados = sorted(jugadores, key=lambda j: j.puntos, reverse=True)
-
-    # Agrupamos jugadores por puntos (clave = puntos)
-    grupos_por_puntos = defaultdict(list)
-    for jugador in jugadores_ordenados:
-        grupos_por_puntos[jugador.puntos].append(jugador)
-
-    # Lista ordenada de puntuaciones descendente
-    puntos_ordenados = sorted(grupos_por_puntos.keys(), reverse=True)
-
-    st.markdown("## 🏆 Podio final")
-
-    emojis = ["🥇", "🥈", "🥉"]
-
-    # Sólo mostramos hasta 3 posiciones (podio)
-    puestos_mostrados = 0
-
-    # Creamos columnas según el número de grupos para las posiciones mostradas
-    # El número de columnas será el mínimo entre 3 y número de grupos
-    num_columnas = min(3, len(puntos_ordenados))
-    cols = st.columns(num_columnas)
-
-    for idx, puntos in enumerate(puntos_ordenados):
-        if puestos_mostrados >= 3:
-            break
-
-        grupo = grupos_por_puntos[puntos]
-
-        with cols[puestos_mostrados]:
-            st.markdown(f"<h2 style='text-align:center'>{emojis[puestos_mostrados]}</h2>", unsafe_allow_html=True)
-
-            # Mostrar nombres uno debajo de otro, centrados
-            for jugador in grupo:
-                st.markdown(f"<h3 style='text-align:center; margin: 0'>{jugador.nombre}</h3>", unsafe_allow_html=True)
-
-            # Mostrar puntos solo una vez debajo de todos
-            st.markdown(f"<p style='text-align:center; font-weight:bold;'>{puntos} puntos</p>", unsafe_allow_html=True)
-
-        puestos_mostrados += 1
-
-    # Si hay más jugadores fuera del podio, listarlos abajo
-    if len(jugadores) > sum(len(grupos_por_puntos[p]) for p in puntos_ordenados[:3]):
-        st.markdown("### Otros jugadores:")
-        jugadores_fuera_podio = []
-        # Sumamos todos los jugadores en los primeros 3 grupos
-        jugadores_podio = []
-        for p in puntos_ordenados[:3]:
-            jugadores_podio.extend(grupos_por_puntos[p])
-        # Filtramos los que no están en podio
-        for jugador in jugadores_ordenados:
-            if jugador not in jugadores_podio:
-                jugadores_fuera_podio.append(jugador)
-
-        for jugador in jugadores_fuera_podio:
-            st.write(f"- {jugador.nombre}: {jugador.puntos} puntos")
-
 def pantalla_inicial():
     st.markdown("""
         <style>
@@ -208,66 +57,6 @@ def pantalla_inicial():
             st.session_state.inicio_confirmado = True
             st.rerun()
 
-
-# ========================
-# CLASES
-# ========================
-
-class Jugador:
-    def __init__(self, nombre, puntos=0):
-        self.nombre = nombre
-        self.puntos = puntos
-
-    def ver_jugador(self):
-        return f"{self.nombre}: {self.puntos} puntos"
-
-class Parametros:
-    def __init__(self, juego, modalidad, puntos):
-        self.juego = juego
-        self.modalidad = modalidad
-        self.puntos = puntos
-
-    def ver_parametros(self):
-        texto = f"Juego: {self.juego} \t| Modalidad: {self.modalidad}"
-        if self.modalidad != "Libre":
-            texto += f" \t| Límite: {self.puntos}"
-        return texto
-
-class Cartas:
-    cartas = {
-        "UNO": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-            "+2": 20, "BLOQUEO": 20, "DIRECCION": 20,
-            "COLOR": 50, "+4": 50
-        },
-        "UNO FLIP": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, 
-            "+1": 10, "+5": 20, "DIRECCION": 20,"BLOQUEO": 20, "FLIP": 20, "SALTA A TODOS": 30, "COLOR": 40, "+2": 50, "COMODÍN": 60
-        },
-
-        "DOS": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-            "#": 40, "COMODIN": 20
-        },
-
-        "UNO ALL WILD": {"COLOR": 20, "DIRECCION": 50, "BLOQUEO": 50, "BLOQUEO DOBLE": 50, "+2": 50, "+4": 50, "CAMBIO FORZOSO": 50, "COMODIN +2": 50
-        },
-
-        "UNO_TEAMS": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-            "ESPECIAL": 20, "COMODIN": 50,
-        },
-
-        "UNO_FLEX": {
-            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8,
-            "ESPECIAL": 20, "COMODIN": 20
-        }
-    }
-
-    @staticmethod
-    def obtener_cartas(juego):
-        return Cartas.cartas.get(juego, {})
-
 # ========================
 # SESIÓN INICIAL
 # ========================
@@ -288,7 +77,6 @@ def init_session_state():
     
     return CLAVE_AES
 
-
 # ========================
 # MENÚ LATERAL
 # ========================
@@ -298,7 +86,7 @@ def main():
     # Paso 1: Control de pantalla inicial
     if not st.session_state.get("inicio_confirmado", False):
         pantalla_inicial()
-        return  # Salimos para evitar mostrar el resto
+        return
 
     st.sidebar.title("Menú")
     pagina = st.sidebar.radio("Navegar a:", ["🎮 Juego", "👥 Jugadores", "🔧 Configuración", "Historial"])
@@ -308,22 +96,8 @@ def main():
     # ========================
     if pagina == "👥 Jugadores":
         st.title("Gestión de Jugadores")
-        st.markdown("""
-        <style>
-        div.stButton > button {
-            background-color: cornflowerblue;
-            color: white;
-            border-radius: 8px;
-            padding: 8px 20px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        div.stButton > button:hover {
-            background-color: royalblue;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        aplicar_estilos_botones()
+
 
         nombre = st.text_input("Nombre del jugador").capitalize()
 
@@ -383,22 +157,8 @@ def main():
     # CONFIGURACIÓN DEL JUEGO
     # ========================
     elif pagina == "🔧 Configuración":
-        st.markdown("""
-        <style>
-        div.stButton > button {
-            background-color: cornflowerblue;
-            color: white;
-            border-radius: 8px;
-            padding: 8px 20px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        div.stButton > button:hover {
-            background-color: royalblue;
-            color: white;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+        aplicar_estilos_botones()
+
         st.title("Configuración del Juego")
         if len(st.session_state.jugadores) < 2:
             st.warning(f"Añadir al menos 2 jugadores - Actualmente {len(st.session_state.jugadores)} jugador/es.")
@@ -444,23 +204,7 @@ def main():
     elif pagina == "🎮 Juego":
         if os.path.exists("CurrentSession.json") and not st.session_state.inicio:
             cargar_sesion()
-        st.markdown("""
-                        <style>
-                        div.stButton > button {
-                            background-color: cornflowerblue;
-                            color: white;
-                            border-radius: 8px;
-                            padding: 8px 20px;
-                            font-weight: bold;
-                            transition: background-color 0.3s ease;
-                        }
-                        div.stButton > button:hover {
-                            background-color: royalblue;
-                            color: white;
-                        }
-                        </style>
-                        """, unsafe_allow_html=True)
-
+        aplicar_estilos_botones()
 
         if not st.session_state.jugadores or len(st.session_state.jugadores) < 2:
             st.warning(f"Añadir al menos 2 jugadores - Actualmente {len(st.session_state.jugadores)} jugador/es.")
@@ -493,7 +237,8 @@ def main():
                     if modalidad == "Partidas":
                         st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                         if st.button("Confirmar ganador"):
-                            if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
+                            jugadores = st.session_state.jugadores
+                            if any(j.nombre == nombre_jugador for j in jugadores):
                                 for j in st.session_state.jugadores:
                                     if j.nombre == nombre_jugador:
                                         j.puntos += 1
@@ -552,7 +297,8 @@ def main():
                             st.session_state.modo_editar_seleccion = False
 
                         if st.session_state.nombre_jugador is None:
-                            if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
+                            jugadores = st.session_state.jugadores
+                            if any(j.nombre == nombre_jugador for j in jugadores):
                                 st.session_state.nombre_jugador = nombre_jugador
                                 st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             else:
@@ -648,7 +394,8 @@ def main():
                         # Pero sin terminar automáticamente
                         st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                         if st.button("Confirmar ganador"):
-                            if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
+                            jugadores = st.session_state.jugadores
+                            if any(j.nombre == nombre_jugador for j in jugadores):
                                 puntos_a_sumar = 1 if modalidad == "Libre-Partidas" else 0
 
                                 if modalidad == "Libre-Puntos":
@@ -745,22 +492,7 @@ def main():
 
 
     elif pagina == "Historial":
-        st.markdown("""
-                        <style>
-                        div.stButton > button {
-                            background-color: cornflowerblue;
-                            color: white;
-                            border-radius: 8px;
-                            padding: 8px 20px;
-                            font-weight: bold;
-                            transition: background-color 0.3s ease;
-                        }
-                        div.stButton > button:hover {
-                            background-color: royalblue;
-                            color: white;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
+        aplicar_estilos_botones()
         password_input = st.text_input("Introduzca la contraseña", type="password")
         
         if st.button("Confirmar"):
@@ -776,8 +508,6 @@ def main():
 
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
-
-
 
 # ========================
 # Inicialización de la Aplicación
