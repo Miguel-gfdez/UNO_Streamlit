@@ -101,6 +101,69 @@ def cargar_sesion():
         st.session_state.inicio = True
         st.session_state.cartas = Cartas.obtener_cartas(p["juego"])
 
+
+def mostrar_podio(jugadores):
+    import streamlit as st
+    from collections import defaultdict
+
+    # Ordenamos jugadores por puntos descendente
+    jugadores_ordenados = sorted(jugadores, key=lambda j: j.puntos, reverse=True)
+
+    # Agrupamos jugadores por puntos (clave = puntos)
+    grupos_por_puntos = defaultdict(list)
+    for jugador in jugadores_ordenados:
+        grupos_por_puntos[jugador.puntos].append(jugador)
+
+    # Lista ordenada de puntuaciones descendente
+    puntos_ordenados = sorted(grupos_por_puntos.keys(), reverse=True)
+
+    st.markdown("## 🏆 Podio final")
+
+    emojis = ["🥇", "🥈", "🥉"]
+
+    # Sólo mostramos hasta 3 posiciones (podio)
+    puestos_mostrados = 0
+
+    # Creamos columnas según el número de grupos para las posiciones mostradas
+    # El número de columnas será el mínimo entre 3 y número de grupos
+    num_columnas = min(3, len(puntos_ordenados))
+    cols = st.columns(num_columnas)
+
+    for idx, puntos in enumerate(puntos_ordenados):
+        if puestos_mostrados >= 3:
+            break
+
+        grupo = grupos_por_puntos[puntos]
+
+        with cols[puestos_mostrados]:
+            st.markdown(f"<h2 style='text-align:center'>{emojis[puestos_mostrados]}</h2>", unsafe_allow_html=True)
+
+            # Mostrar nombres uno debajo de otro, centrados
+            for jugador in grupo:
+                st.markdown(f"<h3 style='text-align:center; margin: 0'>{jugador.nombre}</h3>", unsafe_allow_html=True)
+
+            # Mostrar puntos solo una vez debajo de todos
+            st.markdown(f"<p style='text-align:center; font-weight:bold;'>{puntos} puntos</p>", unsafe_allow_html=True)
+
+        puestos_mostrados += 1
+
+    # Si hay más jugadores fuera del podio, listarlos abajo
+    if len(jugadores) > sum(len(grupos_por_puntos[p]) for p in puntos_ordenados[:3]):
+        st.markdown("### Otros jugadores:")
+        jugadores_fuera_podio = []
+        # Sumamos todos los jugadores en los primeros 3 grupos
+        jugadores_podio = []
+        for p in puntos_ordenados[:3]:
+            jugadores_podio.extend(grupos_por_puntos[p])
+        # Filtramos los que no están en podio
+        for jugador in jugadores_ordenados:
+            if jugador not in jugadores_podio:
+                jugadores_fuera_podio.append(jugador)
+
+        for jugador in jugadores_fuera_podio:
+            st.write(f"- {jugador.nombre}: {jugador.puntos} puntos")
+
+
 # ========================
 # CLASES
 # ========================
@@ -163,8 +226,8 @@ class Cartas:
 # ========================
 # SESIÓN INICIAL
 # ========================
-CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-
+# CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+CLAVE_AES = "contraseñaAESdecifradoydescifrado"
 if "victoria" not in st.session_state:
     st.session_state.victoria = False
 
@@ -204,7 +267,7 @@ if pagina == "👥 Jugadores":
         color: white;
     }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     nombre = st.text_input("Nombre del jugador").capitalize()
 
@@ -322,10 +385,11 @@ elif pagina == "🔧 Configuración":
 # ========================
 # JUEGO
 # ========================
-# NOTAS - añadir opción de añadir puntos totales manualmente
 # CORRECCIONES: a la hora de seleccionar el ganador, tengo que pulsar 2 veces el botón de confirmar
 # Al usar la aplicación en el móvil, los botones de los puntos se ven todos en vertical y además están desordenados.
-# Añadir un TOP al final de la partida con los jugadores y sus puntos totales
+# CONTROLAR LAS SESIONES: eliminar jugadores y parámetros al reiniciar la aplicación
+
+
 elif pagina == "🎮 Juego":
     if os.path.exists("CurrentSession.json") and not st.session_state.inicio:
         cargar_sesion()
@@ -364,8 +428,7 @@ elif pagina == "🎮 Juego":
         st.subheader("Seleccionar GANADOR de la ronda")
 
         nombres_jugadores = [""] + [j.nombre for j in st.session_state.jugadores]
-
-        nombre_jugador = st.selectbox("Selecciona el nombre del jugador", nombres_jugadores)
+        nombre_jugador = st.selectbox("Selecciona el nombre del jugador", nombres_jugadores, index=0)
 
         if st.session_state.juego_bloqueado:
             st.warning("🏁 La partida ha finalizado. Reinicia las puntuaciones para comenzar una nueva ronda.")
@@ -404,9 +467,7 @@ elif pagina == "🎮 Juego":
                         color: white;
                     }
                     </style>
-                """, unsafe_allow_html=True)
-                    # Mismo bloque para Incremento y Libre-Puntos
-                    # Sólo que para Libre-Puntos no bloqueamos partida automáticamente
+                    """, unsafe_allow_html=True)
 
                     if "cartas_seleccionadas" not in st.session_state:
                         st.session_state.cartas_seleccionadas = {}
@@ -418,12 +479,12 @@ elif pagina == "🎮 Juego":
                         st.session_state.modo_editar_seleccion = False
 
                     if st.session_state.nombre_jugador is None:
-                        if st.button("Confirmar ganador", key="btn_confirmar_jugador"):
-                            if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
-                                st.session_state.nombre_jugador = nombre_jugador
-                                st.info(f"Jugador seleccionado: **{nombre_jugador}**")
-                            else:
-                                st.warning("El nombre no coincide con ningún jugador.")
+                        if any(j.nombre == nombre_jugador for j in st.session_state.jugadores):
+                            st.session_state.nombre_jugador = nombre_jugador
+                            st.info(f"Jugador seleccionado: **{nombre_jugador}**")
+                        else:
+                            st.warning("El nombre no coincide con ningún jugador.")
+
                     else:
                         st.info(f"Jugador seleccionado: **{nombre_jugador}**")
 
@@ -444,10 +505,9 @@ elif pagina == "🎮 Juego":
                         else:
                             st.warning("Modo edición: modifica las cantidades de cartas seleccionadas")
 
+                        total_puntos = 0
                         if st.session_state.cartas_seleccionadas:
                             st.markdown("### 🧮 Cartas seleccionadas:")
-                            total_puntos = 0
-
                             if st.session_state.modo_editar_seleccion:
                                 nuevas_cantidades = {}
                                 for carta, cantidad in st.session_state.cartas_seleccionadas.items():
@@ -465,7 +525,6 @@ elif pagina == "🎮 Juego":
                                         st.session_state.modo_editar_seleccion = False
                                         st.success("Cambios guardados.")
                                         st.rerun()
-
                                 with col2:
                                     if st.button("❌ Cancelar edición", key="btn_cancelar_edicion"):
                                         st.session_state.modo_editar_seleccion = False
@@ -475,33 +534,40 @@ elif pagina == "🎮 Juego":
                                     puntos = cartas[carta] * cantidad
                                     total_puntos += puntos
                                     st.write(f"- {carta}: {cantidad} vez/veces ({puntos} puntos)")
-                                st.write(f"**Total: {total_puntos} puntos**")
 
-                                col1, col2 = st.columns(2)
+                        # Entrada adicional de puntos manuales SIEMPRE visible
+                        puntos_extra = st.number_input("➕ Añadir puntos manuales (opcional)", min_value=0, step=1, key="input_puntos_extra")
+                        total_general = total_puntos + puntos_extra
+                        st.write(f"**Total: {total_puntos} (cartas) + {puntos_extra} (manuales) = {total_general} puntos**")
 
-                                with col1:
-                                    confirmar = st.button("✅ Confirmar elección", key="btn_confirmar_eleccion")
-                                    if confirmar:
-                                        for j in st.session_state.jugadores:
-                                            if j.nombre == nombre_jugador:
-                                                j.puntos += total_puntos
-                                                almacenar_jugadores("modificar", "valor")
-                                                st.success(f"{j.nombre} gana {total_puntos} puntos.")
-                                        st.session_state.cartas_seleccionadas = {}
-                                        st.session_state.nombre_jugador = None
-                                        st.rerun()
+                        col1, col2 = st.columns(2)
 
-                                with col2:
-                                    modificar = st.button("🔄 Modificar selección", key="btn_modificar_seleccion")
-                                    if modificar:
-                                        st.session_state.modo_editar_seleccion = True
-                                        st.rerun()
+                        with col1:
+                            confirmar = st.button("✅ Confirmar elección", key="btn_confirmar_eleccion")
+                            if confirmar:
+                                for j in st.session_state.jugadores:
+                                    if j.nombre == nombre_jugador:
+                                        j.puntos += total_general
+                                        almacenar_jugadores("modificar", "valor")
+                                        st.success(f"{j.nombre} gana {total_general} puntos.")
+                                st.session_state.cartas_seleccionadas = {}
+                                st.session_state.nombre_jugador = None
+                                st.rerun()
+
+                        with col2:
+                            modificar = st.button("🔄 Modificar selección", key="btn_modificar_seleccion")
+                            if modificar:
+                                st.session_state.modo_editar_seleccion = True
+                                st.rerun()
+
 
                     # Botón para finalizar la partida (solo en Libre-Puntos)
                     if modalidad == "Libre-Puntos":
                         if st.button("Finalizar partida"):
                             st.session_state.partida_finalizada = True
                             st.session_state.juego_bloqueado = True
+                            st.rerun()
+
 
                 elif modalidad == "Libre-Partidas":
                     # Para ambos modos, la mecánica es similar (sumar puntos o partidas)
@@ -555,31 +621,37 @@ elif pagina == "🎮 Juego":
                 mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
                 st.success(mensaje)
                 st.session_state.juego_bloqueado = True
-                if st. session_state.victoria == False:
+                if st.session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
                     almacenar_jugadores("modificar", "valor")
                     almacenar_parametros("guardar")
+
+                mostrar_podio(st.session_state.jugadores)  # <-- Aquí mostramos el podio
+
 
         elif st.session_state.parametros.modalidad == "Partidas":
             max_partidas = st.session_state.parametros.puntos
             partidas_ganadas_necesarias = math.ceil(max_partidas / 2)
             ganador = next((j for j in st.session_state.jugadores if j.puntos >= partidas_ganadas_necesarias), None)
             if ganador:
-                mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos! \n\t Parámetros: {st.session_state.parametros.juego} - {st.session_state.parametros.modalidad} - {st.session_state.parametros.puntos}"
+                mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
                 st.success(mensaje)
                 st.session_state.juego_bloqueado = True
-                if st. session_state.victoria == False:
+                if st.session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
                     almacenar_jugadores("modificar", "valor")
                     almacenar_parametros("guardar")
+
+                mostrar_podio(st.session_state.jugadores)  # <-- Aquí mostramos el podio
 
         # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
         elif st.session_state.parametros.modalidad in ["Libre-Partidas", "Libre-Puntos"]:
             if st.session_state.partida_finalizada:
                 max_puntos = max(j.puntos for j in st.session_state.jugadores)
                 ganadores = [j for j in st.session_state.jugadores if j.puntos == max_puntos]
+                
                 if len(ganadores) == 1:
                     mensaje = f"🏆 ¡{ganadores[0].nombre} ha ganado la partida con {ganadores[0].puntos} puntos!"
                 else:
@@ -587,12 +659,15 @@ elif pagina == "🎮 Juego":
                     mensaje = f"🏆 Empate entre: {nombres_ganadores} con {max_puntos} puntos."
                 
                 st.success(mensaje)
-                if st. session_state.victoria == False:
+                
+                if st.session_state.victoria == False:
                     registrar_resultado(mensaje)
                     st.session_state.victoria = True
                     almacenar_jugadores("modificar", "valor")
                     almacenar_parametros("guardar")
-
+                
+                # Mostrar podio ordenado con todos los jugadores
+                mostrar_podio(st.session_state.jugadores)
 
 
 elif pagina == "Historial":
