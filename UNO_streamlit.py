@@ -513,4 +513,7 @@ def main():
 # Inicialización de la Aplicación
 # ========================
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        st.stop()        
