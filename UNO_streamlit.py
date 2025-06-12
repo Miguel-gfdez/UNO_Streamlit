@@ -445,22 +445,21 @@ def main():
         if os.path.exists("CurrentSession.json") and not st.session_state.inicio:
             cargar_sesion()
         st.markdown("""
-            <style>
-            div.stButton > button {
-                width: 100%;
-                margin-bottom: 6px;
-                padding: 6px 12px;
-                font-size: 15px;
-                border-radius: 6px;
-                background-color: cornflowerblue;
-                color: white;
-                font-weight: bold;
-            }
-            div.stButton > button:hover {
-                background-color: royalblue;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+                        <style>
+                        div.stButton > button {
+                            background-color: cornflowerblue;
+                            color: white;
+                            border-radius: 8px;
+                            padding: 8px 20px;
+                            font-weight: bold;
+                            transition: background-color 0.3s ease;
+                        }
+                        div.stButton > button:hover {
+                            background-color: royalblue;
+                            color: white;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
 
 
         if not st.session_state.jugadores or len(st.session_state.jugadores) < 2:
@@ -528,17 +527,16 @@ def main():
                         st.markdown("""
                             <style>
                             div.stButton > button {
-                                width: 100%;
-                                margin-bottom: 6px;
-                                padding: 6px 12px;
-                                font-size: 15px;
-                                border-radius: 6px;
                                 background-color: cornflowerblue;
                                 color: white;
+                                border-radius: 8px;
+                                padding: 8px 20px;
                                 font-weight: bold;
+                                transition: background-color 0.3s ease;
                             }
                             div.stButton > button:hover {
                                 background-color: royalblue;
+                                color: white;
                             }
                             </style>
                             """, unsafe_allow_html=True)
