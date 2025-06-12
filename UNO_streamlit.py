@@ -208,25 +208,6 @@ def pantalla_inicial():
             st.session_state.inicio_confirmado = True
             st.rerun()
 
-def agregar_carta(carta):
-    if carta in st.session_state.cartas_seleccionadas:
-        st.session_state.cartas_seleccionadas[carta] += 1
-    else:
-        st.session_state.cartas_seleccionadas[carta] = 1
-
-
-def mostrar_cartas(cartas):
-    carta_items = list(cartas.items())
-    columnas_por_fila = 3  # Puedes probar con 2 si aún se ve mal en móvil
-
-    for i in range(0, len(carta_items), columnas_por_fila):
-        cols = st.columns(columnas_por_fila)
-        for j in range(columnas_por_fila):
-            if i + j < len(carta_items):
-                carta, _ = carta_items[i + j]
-                with cols[j]:
-                    if st.button(f"{carta}", key=f"carta_{carta}"):
-                        agregar_carta(carta)
 
 # ========================
 # CLASES
@@ -522,6 +503,25 @@ def main():
                                 st.warning("El nombre no coincide con ningún jugador.")
 
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
+                        def agregar_carta(carta):
+                            if carta in st.session_state.cartas_seleccionadas:
+                                st.session_state.cartas_seleccionadas[carta] += 1
+                            else:
+                                st.session_state.cartas_seleccionadas[carta] = 1
+
+                        def mostrar_cartas(cartas):
+                            carta_items = list(cartas.items())
+                            columnas_por_fila = 3  # Ajusta a 2 si quieres aún más adaptable
+
+                            for i in range(0, len(carta_items), columnas_por_fila):
+                                cols = st.columns(columnas_por_fila)
+                                for j in range(columnas_por_fila):
+                                    if i + j < len(carta_items):
+                                        carta, _ = carta_items[i + j]
+                                        with cols[j]:
+                                            if st.button(f"{carta}", key=f"carta_{carta}"):
+                                                agregar_carta(carta)
+
                         st.markdown("""
                         <style>
                         div.stButton > button {
