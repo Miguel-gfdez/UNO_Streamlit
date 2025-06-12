@@ -62,6 +62,6 @@ La aplicación facilita la selección dinámica de cartas jugadas por cada jugad
 ## Demo en línea
 
 Puedes probar la aplicación en línea aquí:  
-[https://share.streamlit.io/tu_usuario/tu_repositorio/main/app.py](https://puntoslive.streamlit.app/)
+[https://puntoslive.streamlit.app/](https://puntoslive.streamlit.app/)
 
 
