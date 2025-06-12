@@ -526,21 +526,23 @@ def main():
 
 
                         st.markdown("""
-                        <style>
-                        div.stButton > button {
-                            background-color: cornflowerblue;
-                            color: white;
-                            border-radius: 8px;
-                            padding: 8px 20px;
-                            font-weight: bold;
-                            transition: background-color 0.3s ease;
-                        }
-                        div.stButton > button:hover {
-                            background-color: royalblue;
-                            color: white;
-                        }
-                        </style>
-                        """, unsafe_allow_html=True)
+                            <style>
+                            div.stButton > button {
+                                width: 100%;
+                                margin-bottom: 6px;
+                                padding: 6px 12px;
+                                font-size: 15px;
+                                border-radius: 6px;
+                                background-color: cornflowerblue;
+                                color: white;
+                                font-weight: bold;
+                            }
+                            div.stButton > button:hover {
+                                background-color: royalblue;
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+
 
                         if "cartas_seleccionadas" not in st.session_state:
                             st.session_state.cartas_seleccionadas = {}
