@@ -512,7 +512,7 @@ def main():
 
                         def mostrar_cartas(cartas):
                             carta_items = list(cartas.items())
-                            columnas_por_fila = 2  # más adaptable a móviles
+                            columnas_por_fila = 3  # más adaptable a móviles
 
                             for i in range(0, len(carta_items), columnas_por_fila):
                                 cols = st.columns(columnas_por_fila)
