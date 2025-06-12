@@ -30,7 +30,7 @@ La aplicación facilita la selección dinámica de cartas jugadas por cada jugad
 
 ## Tecnologías usadas
 
-- **Python 3.x**
+- **Python 3.12.4**
 - **Streamlit:** Framework para construir la interfaz web reactiva.
 - **Supabase:** Backend en la nube para almacenamiento y gestión de bases de datos.
 - **Manejo de estado con `st.session_state`:** para almacenar información temporal como cartas seleccionadas, jugadores, y modos de edición.
