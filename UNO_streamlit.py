@@ -445,21 +445,23 @@ def main():
         if os.path.exists("CurrentSession.json") and not st.session_state.inicio:
             cargar_sesion()
         st.markdown("""
-        <style>
-        div.stButton > button {
-            background-color: cornflowerblue;
-            color: white;
-            border-radius: 8px;
-            padding: 8px 20px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        div.stButton > button:hover {
-            background-color: royalblue;
-            color: white;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+            <style>
+            div.stButton > button {
+                width: 100%;
+                margin-bottom: 6px;
+                padding: 6px 12px;
+                font-size: 15px;
+                border-radius: 6px;
+                background-color: cornflowerblue;
+                color: white;
+                font-weight: bold;
+            }
+            div.stButton > button:hover {
+                background-color: royalblue;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
 
         if not st.session_state.jugadores or len(st.session_state.jugadores) < 2:
             st.warning(f"Añadir al menos 2 jugadores - Actualmente {len(st.session_state.jugadores)} jugador/es.")
@@ -509,10 +511,9 @@ def main():
                             else:
                                 st.session_state.cartas_seleccionadas[carta] = 1
 
-
                         def mostrar_cartas(cartas):
                             carta_items = list(cartas.items())
-                            columnas_por_fila = 2 if st.runtime.scriptrunner.get_script_run_context().is_running_with_streamlit else 3  # for web, use 3
+                            columnas_por_fila = 2  # más adaptable a móviles
 
                             for i in range(0, len(carta_items), columnas_por_fila):
                                 cols = st.columns(columnas_por_fila)
