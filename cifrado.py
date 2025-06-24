@@ -61,7 +61,6 @@ def registrar_resultado(mensaje):
     clave = derivar_clave(password.encode(), salt)
     mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + mensaje
     mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
-    st.warning(type(mensaje_cifrado))
 
     # Crear cliente de Supabase para conectarse a la base de datos
     client = get_client()
