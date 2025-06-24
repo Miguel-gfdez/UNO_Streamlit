@@ -6,16 +6,13 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import padding as sym_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import streamlit as st
+
 from bbdd import get_client
 
 # ========================
 # FUNCIONES DE CIFRADO
 # ========================
-# La contraseña la coges de la variable de entorno
-password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-
-# Salt fijo (mejor guardarlo y usar siempre el mismo para que derive la misma clave)
+password = os.getenv("CLAVE_AES").encode()
 salt_b64 = os.getenv("SALT")
 salt = base64.b64decode(salt_b64)
 

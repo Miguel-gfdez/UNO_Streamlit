@@ -11,53 +11,6 @@ from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_s
 # ========================
 # FUNCIONES AUXILIARES
 # ========================
-# def pantalla_inicial():
-#     st.markdown("""
-#         <style>
-#         div.stButton > button {
-#             background-color: cornflowerblue;
-#             color: white;
-#             border-radius: 8px;
-#             padding: 8px 20px;
-#             font-weight: bold;
-#             transition: background-color 0.3s ease;
-#         }
-#         div.stButton > button:hover {
-#             background-color: royalblue;
-#             color: white;
-#         }
-#         </style>
-#         """, unsafe_allow_html=True)
-#     st.title("🎲 Bienvenido al Juego")
-
-#     client = get_client()
-#     res = client.table("Parametros").select("victoria").order("id", desc=True).limit(1).execute()
-#     parametros = res.data
-
-#     if parametros and not parametros[0]["victoria"]:
-#         st.markdown("⚠️ Hay una partida anterior sin terminar.")
-#         col1, col2 = st.columns(2)
-#         with col1:
-#             if st.button("✅ Continuar partida"):
-#                 cargar_sesion()
-#                 st.session_state.inicio_confirmado = True
-#                 st.rerun()
-#         with col2:
-#             if st.button("🗑️ Eliminar y comenzar una nueva"):
-#                 borrar_datos_bd()
-#                 st.session_state.inicio_confirmado = True
-#                 st.session_state.victoria = False
-#                 st.session_state.jugadores = []
-#                 st.session_state.inicio = False
-#                 st.session_state.parametros = None
-#                 st.rerun()
-#     else:
-#         if st.button("🚀 Comenzar nueva partida"):
-#             borrar_datos_bd()  # Por si acaso hay restos
-#             st.session_state.inicio_confirmado = True
-#             st.rerun()
-
-
 def pantalla_inicial():
     st.markdown("""
         <style>
@@ -735,6 +688,7 @@ def main():
     elif pagina == "🏠 Inicio":
         st.session_state.inicio_confirmado = False
         st.rerun()
+    
     # ========================
     # Borrar Sesión Actual
     # Si se pulda esta sección, se eliminarán los jugadores y parámetros correspondientes a la sesión actual
@@ -750,8 +704,6 @@ def main():
         st.session_state.parametros = None
         st.session_state.inicio_confirmado = False
         st.rerun()
-
-
 
 
 # ========================

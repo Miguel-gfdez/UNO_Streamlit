@@ -1,8 +1,9 @@
-from supabase import create_client
 import os
 import streamlit as st
-from clases import Jugador, Parametros, Cartas
 from datetime import datetime
+from supabase import create_client
+
+from clases import Jugador, Parametros, Cartas
 # ========================
 
 
@@ -33,7 +34,6 @@ def borrar_datos_bd_ID(id_sesion):
     # Borra todos los parámetros
     client.table("Parametros").delete().eq("ID_sesion", id_sesion).execute()
 
-
 def generar_nuevo_id_sesion():
     client = get_client()
 
@@ -51,7 +51,6 @@ def generar_nuevo_id_sesion():
     # }).execute()
 
     return nuevo_id
-
 
 def almacenar_jugadores(accion, parametro=None, nombre_original=None, nombre_nuevo=None, jugador_nuevo=None, id=None):
     client = get_client()
@@ -89,7 +88,6 @@ def almacenar_jugadores(accion, parametro=None, nombre_original=None, nombre_nue
                 "nombre": nombre_nuevo
             }).eq("nombre", nombre_original).execute()
 
-
 def almacenar_parametros(accion, id=None):
     client = get_client()
 
@@ -126,7 +124,6 @@ def almacenar_parametros(accion, id=None):
         client.table("Parametros").update(parametros_actualizar).eq("ID_sesion", id).execute()
         return
 
-
 def cargar_sesion(id_sesion):
     client = get_client()
 
@@ -148,3 +145,6 @@ def cargar_sesion(id_sesion):
         st.session_state.victoria = p.get("victoria", False)
         st.session_state.inicio = True
         st.session_state.cartas = Cartas.obtener_cartas(p["juego"])
+
+
+
