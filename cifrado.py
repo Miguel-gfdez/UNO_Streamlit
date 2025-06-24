@@ -6,18 +6,21 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import padding as sym_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
+import streamlit as st
 from bbdd import get_client
 
 # ========================
 # FUNCIONES DE CIFRADO
 # ========================
 # La contraseña la coges de la variable de entorno
-password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+# password = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+password = "contraseñaAESdecifradoydescifrado"
 
 # Salt fijo (mejor guardarlo y usar siempre el mismo para que derive la misma clave)
-salt_b64 = os.getenv("SALT")
-salt = base64.b64decode(salt_b64)
+# salt_b64 = os.getenv("SALT")
+# salt = base64.b64decode(salt_b64)
+salt = "u6P7H5df0Ks4rzLMgC0+Yj=="
+salt = base64.b64decode(salt)
 
 def cifrar_aes(mensaje, clave):
     padder = sym_padding.PKCS7(128).padder()
@@ -58,11 +61,10 @@ def derivar_clave(password, salt):
     return clave
 
 def registrar_resultado(mensaje):
-    clave = derivar_clave(password, salt)
-
+    clave = derivar_clave(password.encode(), salt)
     mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + mensaje
-
     mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
+    st.warning(type(mensaje_cifrado))
 
     # Crear cliente de Supabase para conectarse a la base de datos
     client = get_client()

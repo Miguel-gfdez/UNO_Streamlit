@@ -5,12 +5,59 @@ import streamlit as st
 from clases import Jugador, Parametros, Cartas
 from utils import mostrar_podio, aplicar_estilos_botones
 from cifrado import registrar_resultado, mostrar_resultados
-from bbdd import get_client, borrar_datos_bd, almacenar_jugadores, almacenar_parametros, cargar_sesion
+from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_sesion, generar_nuevo_id_sesion
 
 
 # ========================
 # FUNCIONES AUXILIARES
 # ========================
+# def pantalla_inicial():
+#     st.markdown("""
+#         <style>
+#         div.stButton > button {
+#             background-color: cornflowerblue;
+#             color: white;
+#             border-radius: 8px;
+#             padding: 8px 20px;
+#             font-weight: bold;
+#             transition: background-color 0.3s ease;
+#         }
+#         div.stButton > button:hover {
+#             background-color: royalblue;
+#             color: white;
+#         }
+#         </style>
+#         """, unsafe_allow_html=True)
+#     st.title("🎲 Bienvenido al Juego")
+
+#     client = get_client()
+#     res = client.table("Parametros").select("victoria").order("id", desc=True).limit(1).execute()
+#     parametros = res.data
+
+#     if parametros and not parametros[0]["victoria"]:
+#         st.markdown("⚠️ Hay una partida anterior sin terminar.")
+#         col1, col2 = st.columns(2)
+#         with col1:
+#             if st.button("✅ Continuar partida"):
+#                 cargar_sesion()
+#                 st.session_state.inicio_confirmado = True
+#                 st.rerun()
+#         with col2:
+#             if st.button("🗑️ Eliminar y comenzar una nueva"):
+#                 borrar_datos_bd()
+#                 st.session_state.inicio_confirmado = True
+#                 st.session_state.victoria = False
+#                 st.session_state.jugadores = []
+#                 st.session_state.inicio = False
+#                 st.session_state.parametros = None
+#                 st.rerun()
+#     else:
+#         if st.button("🚀 Comenzar nueva partida"):
+#             borrar_datos_bd()  # Por si acaso hay restos
+#             st.session_state.inicio_confirmado = True
+#             st.rerun()
+
+
 def pantalla_inicial():
     st.markdown("""
         <style>
@@ -28,40 +75,83 @@ def pantalla_inicial():
         }
         </style>
         """, unsafe_allow_html=True)
-    st.title("🎲 Bienvenido al Juego")
+
+    # st.title("🎲 Bienvenido/a")
+    st.markdown(
+    "<div style='text-align: right; font-size: 14px; color: gray;'>🌐 Idioma: Spanish</div>",
+    unsafe_allow_html=True
+)
+    st.markdown("<h1 style='text-align: center;'>🎲 Bienvenido/a</h1>", unsafe_allow_html=True)
 
     client = get_client()
-    res = client.table("Parametros").select("victoria").order("id", desc=True).limit(1).execute()
-    parametros = res.data
 
-    if parametros and not parametros[0]["victoria"]:
-        st.markdown("⚠️ Hay una partida anterior sin terminar.")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Continuar partida"):
-                cargar_sesion()
+    # Mostrar sesiones existentes
+    st.subheader("📋 Sesiones anteriores")
+    sesiones_res = client.table("Parametros").select("ID_sesion, victoria").execute()
+    sesiones = sesiones_res.data if sesiones_res.data else []
+
+    if sesiones:
+        for sesion in sesiones:
+            id_sesion = sesion["ID_sesion"]
+            estado = "✅ Finalizada" if sesion["victoria"] else "⏳ En curso"
+            st.markdown(f"#### 🆔 Sesión {id_sesion} — {estado}")
+
+            # Mostrar parámetros de la sesión
+            parametros_res = client.table("Parametros").select("juego, modalidad, puntos").eq("ID_sesion", id_sesion).execute()
+            if parametros_res.data:
+                p = parametros_res.data[0]
+                st.markdown(f"🔧 **Juego:** {p['juego']}  |  🧩 **Modalidad:** {p['modalidad']}  |  🎯 **Puntos/Partidas:** {p['puntos']}")
+            
+            # Mostrar jugadores
+            jugadores_res = client.table("Jugadores").select("nombre, puntuacion").eq("ID_sesion", id_sesion).execute()
+            jugadores = jugadores_res.data if jugadores_res.data else []
+            if jugadores:
+                for j in jugadores:
+                    st.markdown(f"- {j['nombre']}: {j['puntuacion']} puntos")
+            else:
+                st.markdown("*Sin jugadores registrados*")
+
+            st.markdown("---")
+
+        # Opción para cargar sesión anterior
+        st.markdown("### 📂 Cargar sesión")
+        id_input = st.number_input("Introduce el ID de sesión",min_value=1,step=1,help="Permite reutilizar la configuración de jugadores y parámetros establecida.")
+        if st.button("✅ Confirmar sesión existente"):
+            existe = any(s["ID_sesion"] == id_input for s in sesiones)
+            if existe:
+                st.session_state.id_sesion = id_input
                 st.session_state.inicio_confirmado = True
+                cargar_sesion(id_input)
+                st.success(f"Sesión {id_input} cargada correctamente.")
                 st.rerun()
-        with col2:
-            if st.button("🗑️ Eliminar y comenzar una nueva"):
-                borrar_datos_bd()
-                st.session_state.inicio_confirmado = True
-                st.session_state.victoria = False
-                st.session_state.jugadores = []
-                st.session_state.inicio = False
-                st.session_state.parametros = None
-                st.rerun()
+            else:
+                st.error(f"No existe la sesión con ID {id_input}.")
     else:
-        if st.button("🚀 Comenzar nueva partida"):
-            borrar_datos_bd()  # Por si acaso hay restos
-            st.session_state.inicio_confirmado = True
-            st.rerun()
+        st.markdown("⚠️ No hay sesiones registradas.")
+
+    st.markdown("---")
+
+    # Opción para nueva partida
+    st.markdown("### 🆕 Nueva partida")
+    if st.button("🚀 Comenzar nueva partida"):
+        nuevo_id = generar_nuevo_id_sesion()
+        st.session_state.id_sesion = nuevo_id
+        almacenar_parametros("inicio")
+        st.session_state.inicio_confirmado = True
+        st.session_state.victoria = False
+        st.session_state.jugadores = []
+        st.session_state.inicio = False
+        st.session_state.parametros = None
+        # st.success(f"Nueva sesión creada con ID {nuevo_id}.")
+        st.rerun()
+
 
 # ========================
 # SESIÓN INICIAL
 # ========================
 def init_session_state():
     CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+
     # Solo inicializa variables si no existen para no sobreescribir en cada run
     if "victoria" not in st.session_state:
         st.session_state.victoria = False
@@ -89,15 +179,17 @@ def main():
         return
 
     st.sidebar.title("Menú")
-    pagina = st.sidebar.radio("Navegar a:", ["🎮 Juego", "👥 Jugadores", "🔧 Configuración", "Historial"])
+    pagina = st.sidebar.radio("Navegar a:", ["🎮 Juego", "👥 Jugadores", "🔧 Configuración", "📜 Historial", "📋 Sesiones", "🏠 Inicio", "🗑️ Borrar Sesion Actual"])
 
     # ========================
     # GESTIÓN DE JUGADORES
+    # Esta sección permite añadir, eliminar y modificar jugadores.
     # ========================
     if pagina == "👥 Jugadores":
         st.title("Gestión de Jugadores")
-        aplicar_estilos_botones()
+        st.write("Sesión actual:", st.session_state.get("id_sesion"))
 
+        aplicar_estilos_botones()
 
         nombre = st.text_input("Nombre del jugador").capitalize()
 
@@ -107,7 +199,7 @@ def main():
             if st.button("Añadir Jugador"):
                 if nombre and not any(j.nombre == nombre for j in st.session_state.jugadores):
                     st.session_state.jugadores.append(Jugador(nombre))
-                    almacenar_jugadores("añadir", jugador_nuevo=Jugador(nombre))
+                    almacenar_jugadores("añadir", jugador_nuevo=Jugador(nombre)) # 
                     st.success(f"{nombre} añadido.")
 
                 else:
@@ -155,6 +247,7 @@ def main():
 
     # ========================
     # CONFIGURACIÓN DEL JUEGO
+    # Esta sección permite configurar el juego, incluyendo el tipo de juego, modalidad y límite de puntos o partidas.
     # ========================
     elif pagina == "🔧 Configuración":
         aplicar_estilos_botones()
@@ -179,7 +272,7 @@ def main():
                     else:
                         st.session_state.parametros = Parametros(juego, modalidad, limite)
                         st.session_state.inicio = True
-                        almacenar_parametros("guardar")
+                        almacenar_parametros("actualizar", st.session_state.id_sesion)
                         st.success("Parámetros configurados correctamente.")
                 elif modalidad == "Incremento":
                     if limite < 100:
@@ -187,23 +280,23 @@ def main():
                     else:
                         st.session_state.parametros = Parametros(juego, modalidad, limite)
                         st.session_state.inicio = True
-                        almacenar_parametros("guardar")
+                        almacenar_parametros("actualizar", st.session_state.id_sesion)
                         st.success("Parámetros configurados correctamente.")
                 else:
                     st.session_state.parametros = Parametros(juego, modalidad, 0)
                     st.session_state.inicio = True
-                    almacenar_parametros("guardar")
+                    almacenar_parametros("actualizar", st.session_state.id_sesion)
                     st.success("Parámetros configurados correctamente.")
+
 
         if st.session_state.parametros:
             st.info(st.session_state.parametros.ver_parametros())
 
     # ========================
     # JUEGO
+    # Esta sección establece la lógica principal del juego, permitiendo seleccionar ganadores, sumar puntos y gestionar el flujo del juego
     # ========================
     elif pagina == "🎮 Juego":
-        if os.path.exists("CurrentSession.json") and not st.session_state.inicio:
-            cargar_sesion()
         aplicar_estilos_botones()
 
         if not st.session_state.jugadores or len(st.session_state.jugadores) < 2:
@@ -236,17 +329,45 @@ def main():
 
                     if modalidad == "Partidas":
                         st.info(f"Jugador seleccionado: **{nombre_jugador}**")
-                        if st.button("Confirmar ganador"):
-                            jugadores = st.session_state.jugadores
-                            if any(j.nombre == nombre_jugador for j in jugadores):
-                                for j in st.session_state.jugadores:
-                                    if j.nombre == nombre_jugador:
-                                        j.puntos += 1
-                                        contador_partidas += 1
-                                almacenar_jugadores("modificar", "valor")
-                                st.success(f"{nombre_jugador} ha ganado 1 punto.")
-                            else:
-                                st.warning("El nombre no coincide con ningún jugador.")
+
+                        jugadores = st.session_state.jugadores
+                        num_jugadores = len(jugadores)
+                        max_partidas = st.session_state.parametros.puntos  # máximo actual
+                        
+                        # Mostrar debug si quieres:
+                        # st.warning(f"num jugadores: {num_jugadores}")
+                        # st.warning(f"max partidas: {max_partidas}")
+                        
+                        # Validación estricta para evitar empate matemático
+                        if max_partidas % num_jugadores != 1:
+                            st.warning(
+                                f"⚠️ El límite de partidas ({max_partidas}) no es válido para ({num_jugadores}) jugadores. "
+                                "Para evitar empates, modifica el límite de partidas."
+                            )
+                            nuevo_max = st.number_input(
+                                "Ajusta el máximo de partidas para cumplir la condición necesaria:", 
+                                min_value=num_jugadores + 1, step=num_jugadores, value=max_partidas + 1
+                            )
+                            if st.button("Actualizar máximo de partidas"):
+                                st.session_state.parametros.puntos = nuevo_max
+                                almacenar_parametros("actualizar", id=st.session_state.id_sesion)
+                                st.success(f"Máximo de partidas actualizado a {nuevo_max}.")
+                                st.rerun()
+                        else:
+                            # Si la condición se cumple, se puede confirmar ganador y sumar puntos
+                            if st.button("Confirmar ganador"):
+                                if any(j.nombre == nombre_jugador for j in jugadores):
+                                    for j in jugadores:
+                                        if j.nombre == nombre_jugador:
+                                            j.puntos += 1
+                                            contador_partidas += 1
+                                    almacenar_jugadores("modificar", "valor")
+                                    st.success(f"{nombre_jugador} ha ganado 1 punto.")
+                                else:
+                                    st.warning("El nombre no coincide con ningún jugador.")
+
+
+
 
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
                         def agregar_carta(carta):
@@ -431,7 +552,7 @@ def main():
                 st.session_state.partida_finalizada = False
                 st.session_state.victoria = False
                 almacenar_jugadores("modificar", "valor")
-                almacenar_parametros("guardar")
+                almacenar_parametros("actualizar", st.session_state.id_sesion)
                 st.success("Puntuaciones reiniciadas.")
                 st.rerun()
 
@@ -446,7 +567,7 @@ def main():
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
                         almacenar_jugadores("modificar", "valor")
-                        almacenar_parametros("guardar")
+                        almacenar_parametros("actualizar", st.session_state.id_sesion)
 
                     mostrar_podio(st.session_state.jugadores)  # <-- Aquí mostramos el podio
 
@@ -454,18 +575,45 @@ def main():
             elif st.session_state.parametros.modalidad == "Partidas":
                 max_partidas = st.session_state.parametros.puntos
                 partidas_ganadas_necesarias = math.ceil(max_partidas / 2)
+                
+                # Suma total de partidas jugadas (suma de puntos de todos)
+                partidas_jugadas = sum(j.puntos for j in st.session_state.jugadores)
+                
                 ganador = next((j for j in st.session_state.jugadores if j.puntos >= partidas_ganadas_necesarias), None)
+
                 if ganador:
-                    mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{st.session_state.parametros.puntos} puntos!"
+                    # Si alguien alcanzó la mayoría, fin de partida
+                    mensaje = f"🏆 ¡{ganador.nombre} ha ganado la partida con {ganador.puntos}/{max_partidas} puntos!"
                     st.success(mensaje)
                     st.session_state.juego_bloqueado = True
-                    if st.session_state.victoria == False:
+                    if not st.session_state.victoria:
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
                         almacenar_jugadores("modificar", "valor")
-                        almacenar_parametros("guardar")
+                        almacenar_parametros("actualizar", st.session_state.id_sesion)
 
-                    mostrar_podio(st.session_state.jugadores)  # <-- Aquí mostramos el podio
+                    mostrar_podio(st.session_state.jugadores)
+
+                elif partidas_jugadas >= max_partidas:
+                    # Si se han jugado todas las partidas pero no hay mayoría, empate o ganador por puntos
+                    max_puntos = max(j.puntos for j in st.session_state.jugadores)
+                    ganadores = [j for j in st.session_state.jugadores if j.puntos == max_puntos]
+                    
+                    if len(ganadores) == 1:
+                        mensaje = f"🏆 ¡{ganadores[0].nombre} ha ganado la partida con {ganadores[0].puntos}/{max_partidas} puntos tras completarse todas las partidas!"
+                    else:
+                        nombres_empate = ", ".join(j.nombre for j in ganadores)
+                        mensaje = f"🤝 Empate entre {nombres_empate} con {max_puntos}/{max_partidas} puntos tras completarse todas las partidas."
+                    
+                    st.success(mensaje)
+                    st.session_state.juego_bloqueado = True
+                    if not st.session_state.victoria:
+                        registrar_resultado(mensaje)
+                        st.session_state.victoria = True
+                        almacenar_jugadores("modificar", "valor")
+                        almacenar_parametros("actualizar", st.session_state.id_sesion)
+                    mostrar_podio(st.session_state.jugadores)
+
 
             # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
             elif st.session_state.parametros.modalidad in ["Libre-Partidas", "Libre-Puntos"]:
@@ -485,13 +633,17 @@ def main():
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
                         almacenar_jugadores("modificar", "valor")
-                        almacenar_parametros("guardar")
+                        almacenar_parametros("actualizar", st.session_state.id_sesion)
                     
                     # Mostrar podio ordenado con todos los jugadores
                     mostrar_podio(st.session_state.jugadores)
 
-
-    elif pagina == "Historial":
+    # ========================
+    # Historial de Resultados
+    # Esta sección permite ver los resultados de partidas anteriores
+    # Requiere autenticación con contraseña para acceder
+    # ========================
+    elif pagina == "📜 Historial":
         aplicar_estilos_botones()
         password_input = st.text_input("Introduzca la contraseña", type="password")
         
@@ -508,6 +660,99 @@ def main():
 
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
+    
+    # ========================
+    # Sesiones Activas
+    # Esta sección permite ver las sesiones activas y eliminar sesiones específicas o todas las sesiones
+    # Requiere autenticación con contraseña para acceder
+    # ========================
+    elif pagina == "📋 Sesiones":
+        aplicar_estilos_botones()
+
+        # Mostrar input solo si aún no se ha autenticado
+        if not st.session_state.get("acceso_sesiones", False):
+            password_input = st.text_input("Introduzca la contraseña", type="password")
+            if st.button("Confirmar"):
+                if password_input.encode() == CLAVE_AES:
+                    st.success("Contraseña correcta. Acceso concedido.")
+                    st.session_state["acceso_sesiones"] = True
+                else:
+                    st.error("Contraseña incorrecta. Acceso denegado.")
+
+        # Si ya se autenticó correctamente
+        if st.session_state.get("acceso_sesiones", False):
+            st.subheader("📋 Sesiones Activas")
+
+            client = get_client()
+
+            # Obtener sesiones
+            sesiones_res = client.table("Parametros").select("ID_sesion, victoria").order("ID_sesion", desc=True).execute()
+            sesiones = sesiones_res.data if sesiones_res.data else []
+
+            if not sesiones:
+                st.info("No hay sesiones registradas.")
+            else:
+                for sesion in sesiones:
+                    id_sesion = sesion["ID_sesion"]
+                    estado = "✅ Finalizada" if sesion["victoria"] else "⏳ En curso"
+                    st.markdown(f"#### 🆔 Sesión {id_sesion} — {estado}")
+
+                    jugadores_res = client.table("Jugadores").select("nombre, puntuacion").eq("ID_sesion", id_sesion).execute()
+                    jugadores = jugadores_res.data if jugadores_res.data else []
+
+                    if jugadores:
+                        for j in jugadores:
+                            st.markdown(f"- {j['nombre']}: {j['puntuacion']} puntos")
+                    else:
+                        st.markdown("*Sin jugadores registrados*")
+                    st.markdown("---")
+
+                # --- Eliminar todas las sesiones ---
+                st.markdown("### 🗑️ Eliminar todas las sesiones")
+                if st.button("Eliminar TODO"):
+                    almacenar_parametros("eliminar")
+                    st.success("Todas las sesiones han sido eliminadas.")
+                    st.rerun()
+
+                # --- Eliminar sesión específica ---
+                st.markdown("### ❌ Eliminar una sesión por ID")
+                sesion_id_a_eliminar = st.number_input("Introduce el ID de sesión a eliminar", min_value=1, step=1)
+
+                if st.button("Eliminar sesión"):
+                    existe = any(s["ID_sesion"] == sesion_id_a_eliminar for s in sesiones)
+                    if existe:
+                        # st.warning(sesion_id_a_eliminar)
+                        almacenar_parametros("eliminar", id=sesion_id_a_eliminar)
+                        st.success(f"Sesión {sesion_id_a_eliminar} eliminada correctamente.")
+                        st.rerun()
+                    else:
+                        st.error("Ese ID de sesión no existe.")
+    
+    # ========================
+    # Página de Inicio
+    # ESta sección permite volver a la pantalla de inicio, reiniciando el estado de la aplicación
+    # ========================
+    elif pagina == "🏠 Inicio":
+        st.session_state.inicio_confirmado = False
+        st.rerun()
+    # ========================
+    # Borrar Sesión Actual
+    # Si se pulda esta sección, se eliminarán los jugadores y parámetros correspondientes a la sesión actual
+    # y se reiniciará la aplicación
+    # Esto es útil si se quiere empezar una nueva sesión sin tener que recargar la página
+    # ========================
+    elif pagina == "🗑️ Borrar Sesion Actual":
+        almacenar_parametros("eliminar", id=st.session_state.id_sesion)
+        st.session_state.inicio_confirmado = True
+        st.session_state.victoria = False
+        st.session_state.jugadores = []
+        st.session_state.inicio = False
+        st.session_state.parametros = None
+        st.session_state.inicio_confirmado = False
+        st.rerun()
+
+
+
 
 # ========================
 # Inicialización de la Aplicación
