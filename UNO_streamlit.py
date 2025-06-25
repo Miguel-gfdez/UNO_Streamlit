@@ -312,11 +312,7 @@ def main():
 
                         jugadores = st.session_state.jugadores
                         num_jugadores = len(jugadores)
-                        max_partidas = st.session_state.parametros.puntos  # máximo actual
-                        
-                        # Mostrar debug si quieres:
-                        # st.warning(f"num jugadores: {num_jugadores}")
-                        # st.warning(f"max partidas: {max_partidas}")
+                        max_partidas = st.session_state.parametros.puntos
                         
                         # Validación estricta para evitar empate matemático
                         if max_partidas % num_jugadores != 1:
@@ -345,8 +341,6 @@ def main():
                                     st.success(f"{nombre_jugador} ha ganado 1 punto.")
                                 else:
                                     st.warning("El nombre no coincide con ningún jugador.")
-
-
 
 
                     elif modalidad in ["Incremento", "Libre-Puntos"]:

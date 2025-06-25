@@ -1,5 +1,6 @@
 import os
 import base64
+import streamlit as st
 from datetime import datetime
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
@@ -55,16 +56,34 @@ def derivar_clave(password, salt):
     clave = kdf.derive(password)  # clave derivada para usar en AES
     return clave
 
-def registrar_resultado(mensaje):
-    clave = derivar_clave(password.encode(), salt)
-    mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + mensaje
-    mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
+# def registrar_resultado(mensaje):
+#     try:
+#         clave = derivar_clave(password, salt)
+#         mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
+#         mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
 
-    # Crear cliente de Supabase para conectarse a la base de datos
-    client = get_client()
-    # Insertar resultado en la tabla "partidas"
-    data = {"resultados": mensaje_cifrado}
-    client.table("Historial").insert(data).execute()
+#         client = get_client()
+#         data = {"resultados": mensaje_cifrado}
+#         res = client.table("Historial").insert(data).execute()
+
+#     except Exception as e:
+#         pass
+
+def registrar_resultado(mensaje):
+    try:
+        clave = derivar_clave(password, salt)
+        mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
+        mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
+
+        client = get_client()
+        data = {"resultados": mensaje_cifrado}
+        res = client.table("Historial").insert(data).execute()
+
+        if res.error:
+            st.error(f"Error al guardar resultado: {res.error.message}")
+    except Exception as e:
+        st.error(f"Excepción en registrar_resultado: {e}")
+
 
 def mostrar_resultados():
     clave = derivar_clave(password, salt)
