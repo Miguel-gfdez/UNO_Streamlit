@@ -9,9 +9,11 @@ from clases import Jugador, Parametros, Cartas
 
 def get_client():
     try:
-        url = os.getenv("SUPABASE_URL")
+        # url = os.getenv("SUPABASE_URL")
+        url = "https://rzzebfnvgicvovhkqcyi.supabase.co"
         # # url = SUPABASE_URL if url is None else url
-        key = os.getenv("SUPABASE_KEY")
+        # key = os.getenv("SUPABASE_KEY")
+        key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6emViZm52Z2ljdm92aGtxY3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2MzI0NzUsImV4cCI6MjA2NTIwODQ3NX0.LhgN8mKzsd2-wvoZkzkIvRhkvfjg6g-QjFMZgzBxwfM"
         # key = SUPABASE_KEY if key is None else key
     except Exception as e:
         url = " "

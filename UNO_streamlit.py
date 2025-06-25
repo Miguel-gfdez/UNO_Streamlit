@@ -1,12 +1,21 @@
 import os
 import math
 import streamlit as st
+from streamlit_cookies_controller import CookieController
 
 from clases import Jugador, Parametros, Cartas
 from utils import mostrar_podio, aplicar_estilos_botones
 from cifrado import registrar_resultado, mostrar_resultados
 from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_sesion, generar_nuevo_id_sesion
 
+
+
+# ========================
+# Cookies
+# ========================
+# Inicializar el controlador
+cookies = CookieController()
+cookies.load_cookies()  # Importante: cargar cookies existentes
 
 # ========================
 # FUNCIONES AUXILIARES
@@ -75,6 +84,7 @@ def pantalla_inicial():
                 st.session_state.id_sesion = id_input
                 st.session_state.inicio_confirmado = True
                 cargar_sesion(id_input)
+
                 st.success(f"Sesión {id_input} cargada correctamente.")
                 st.rerun()
             else:
@@ -89,6 +99,8 @@ def pantalla_inicial():
     if st.button("🚀 Comenzar nueva partida"):
         nuevo_id = generar_nuevo_id_sesion()
         st.session_state.id_sesion = nuevo_id
+        cookies.set_cookie("id_sesion", nuevo_id)
+        cookies.save_cookies()
         almacenar_parametros("inicio")
         st.session_state.inicio_confirmado = True
         st.session_state.victoria = False
@@ -103,7 +115,8 @@ def pantalla_inicial():
 # SESIÓN INICIAL
 # ========================
 def init_session_state():
-    CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+    # CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+    CLAVE_AES = "contraseñaAESdecifradoydescifrado"
 
     # Solo inicializa variables si no existen para no sobreescribir en cada run
     if "victoria" not in st.session_state:
@@ -125,6 +138,16 @@ def init_session_state():
 # ========================
 def main():
     CLAVE_AES = init_session_state()
+
+    # Si no hay sesión pero hay cookie, la usamos
+    if "id_sesion" not in st.session_state:
+        session_cookie = cookies.get_cookie("id_sesion")
+        if session_cookie:
+            st.session_state.id_sesion = session_cookie
+            cargar_sesion(session_cookie)
+            st.session_state.inicio_confirmado = True
+            st.success(f"Sesión {session_cookie} cargada automáticamente desde la cookie.")
+            st.rerun()
 
     # Paso 1: Control de pantalla inicial
     if not st.session_state.get("inicio_confirmado", False):
@@ -687,6 +710,8 @@ def main():
     # ========================
     elif pagina == "🏠 Inicio":
         st.session_state.inicio_confirmado = False
+        cookies.delete_cookie("id_sesion")
+        cookies.save_cookies()
         st.rerun()
     
     # ========================
@@ -703,6 +728,8 @@ def main():
         st.session_state.inicio = False
         st.session_state.parametros = None
         st.session_state.inicio_confirmado = False
+        cookies.delete_cookie("id_sesion")
+        cookies.save_cookies()
         st.rerun()
 
 
