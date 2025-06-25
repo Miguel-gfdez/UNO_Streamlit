@@ -427,26 +427,24 @@ def main():
                             st.subheader("Selecciona las cartas jugadas")
                             mostrar_cartas(cartas)
 
-                            # cols = st.columns(4)
-
-                            # def agregar_carta(carta):
-                            #     if carta in st.session_state.cartas_seleccionadas:
-                            #         st.session_state.cartas_seleccionadas[carta] += 1
-                            #     else:
-                            #         st.session_state.cartas_seleccionadas[carta] = 1
-
-                            # # Botones para añadir cartas si no estamos en modo edición
-                            # if not st.session_state.modo_editar_seleccion:
-                            #     for i, carta in enumerate(cartas.keys()):
-                            #         if cols[i % 4].button(f"{carta}", key=f"carta_{carta}"):
-                            #             agregar_carta(carta)
-                            # else:
-                            #     st.warning("Modo edición: modifica las cantidades de cartas seleccionadas")
-
                             total_puntos = 0
                             if st.session_state.cartas_seleccionadas:
                                 st.markdown("### 🧮 Cartas seleccionadas:")
-                                if st.session_state.modo_editar_seleccion:
+
+                                if not st.session_state.modo_editar_seleccion:
+                                    # Mostrar resumen de selección
+                                    for carta, cantidad in st.session_state.cartas_seleccionadas.items():
+                                        puntos = cartas[carta] * cantidad
+                                        total_puntos += puntos
+                                        st.write(f"- {carta}: {cantidad} vez/veces ({puntos} puntos)")
+
+                                    # Botón para activar el modo edición
+                                    if st.button("🔄 Modificar selección", key="btn_modificar_seleccion"):
+                                        st.session_state.modo_editar_seleccion = True
+                                        st.rerun()
+
+                                else:
+                                    # Modo edición activado: permitir cambiar cantidades
                                     nuevas_cantidades = {}
                                     for carta, cantidad in st.session_state.cartas_seleccionadas.items():
                                         nuevas_cantidades[carta] = st.number_input(
@@ -456,10 +454,13 @@ def main():
                                             step=1,
                                             key=f"editar_{carta}"
                                         )
+
                                     col1, col2 = st.columns(2)
                                     with col1:
                                         if st.button("💾 Guardar cambios", key="btn_guardar_cambios"):
-                                            st.session_state.cartas_seleccionadas = {c: n for c, n in nuevas_cantidades.items() if n > 0}
+                                            st.session_state.cartas_seleccionadas = {
+                                                c: n for c, n in nuevas_cantidades.items() if n > 0
+                                            }
                                             st.session_state.modo_editar_seleccion = False
                                             st.success("Cambios guardados.")
                                             st.rerun()
@@ -467,14 +468,15 @@ def main():
                                         if st.button("❌ Cancelar edición", key="btn_cancelar_edicion"):
                                             st.session_state.modo_editar_seleccion = False
                                             st.info("Edición cancelada.")
-                                else:
-                                    for carta, cantidad in st.session_state.cartas_seleccionadas.items():
-                                        puntos = cartas[carta] * cantidad
-                                        total_puntos += puntos
-                                        st.write(f"- {carta}: {cantidad} vez/veces ({puntos} puntos)")
+                                            st.rerun()
 
-                            # Entrada adicional de puntos manuales SIEMPRE visible
-                            puntos_extra = st.number_input("➕ Añadir puntos manuales (opcional)", min_value=0, step=1, key="input_puntos_extra")
+                            # Entrada de puntos extra (siempre visible)
+                            puntos_extra = st.number_input(
+                                "➕ Añadir puntos manuales (opcional)",
+                                min_value=0,
+                                step=1,
+                                key="input_puntos_extra"
+                            )
                             total_general = total_puntos + puntos_extra
                             st.write(f"**Total: {total_puntos} (cartas) + {puntos_extra} (manuales) = {total_general} puntos**")
 
@@ -492,11 +494,11 @@ def main():
                                     st.session_state.nombre_jugador = None
                                     st.rerun()
 
-                            with col2:
-                                modificar = st.button("🔄 Modificar selección", key="btn_modificar_seleccion")
-                                if modificar:
-                                    st.session_state.modo_editar_seleccion = True
-                                    st.rerun()
+                            # with col2:
+                            #     modificar = st.button("🔄 Modificar selección", key="btn_modificar_seleccion")
+                            #     if modificar:
+                            #         st.session_state.modo_editar_seleccion = True
+                            #         st.rerun()
 
 
                         # Botón para finalizar la partida (solo en Libre-Puntos)
