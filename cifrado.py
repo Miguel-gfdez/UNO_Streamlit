@@ -73,10 +73,16 @@ def registrar_resultado(mensaje):
 
         client = get_client()
         data = {"resultados": mensaje_cifrado}
-        res = client.table("Historial").insert(data).execute()
+        response = client.table("Historial").insert(data).execute()
 
-        if res.error:
-            st.error(f"Error al guardar resultado: {res.error.message}")
+        # Revisar si hay error
+        if hasattr(response, "error") and response.error is not None:
+            st.error(f"Error al insertar: {response.error}")
+        elif response.status_code not in (200, 201):
+            st.error(f"Error al insertar: Código {response.status_code}")
+        else:
+            st.success("Datos guardados correctamente")
+
     except Exception as e:
         st.error(f"Excepción en registrar_resultado: {e}")
 

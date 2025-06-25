@@ -561,14 +561,12 @@ def main():
                     st.success(mensaje)
                     st.session_state.juego_bloqueado = True
                     if not st.session_state.victoria:
-                        st.warning("A")
                         registrar_resultado(mensaje)
-                        st.warning("B")
+                        st.warning("A")
                         st.session_state.victoria = True
                         almacenar_jugadores("modificar", "valor")
-                        st.warning("c")
                         almacenar_parametros("actualizar", st.session_state.id_sesion)
-                        st.warning("D")
+                        st.warning("B")
 
                     mostrar_podio(st.session_state.jugadores)
 
