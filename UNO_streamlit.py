@@ -425,7 +425,8 @@ def main():
                             st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             st.subheader("Selecciona las cartas jugadas")
                             st.write("C")
-                            st.write(cartas)
+                            st.write("Juego:", juego)
+                            st.write("Cartas:", cartas)
                             mostrar_cartas(cartas)
                             st.write("D")
 
