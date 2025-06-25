@@ -1,12 +1,74 @@
 import os
 import math
 import streamlit as st
+from streamlit.components.v1 import components
 from streamlit_cookies_controller import CookieController
 
 from clases import Jugador, Parametros, Cartas
 from utils import mostrar_podio, aplicar_estilos_botones
 from cifrado import registrar_resultado, mostrar_resultados
 from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_sesion, generar_nuevo_id_sesion
+
+js_code = """
+<script>
+// Función para obtener cookie por nombre
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+// Función para establecer cookie
+function setCookie(name, value, days) {
+  const expires = new Date(Date.now() + days*24*60*60*1000).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+}
+
+// Escuchar mensajes desde Streamlit
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (data.type === 'set_cookie') {
+    setCookie(data.name, data.value, data.days || 7);
+    // Confirmación a Streamlit
+    window.parent.postMessage({ type: 'cookie_set', name: data.name }, '*');
+  }
+  if (data.type === 'get_cookie') {
+    const val = getCookie(data.name);
+    // Actualizar URL con el valor codificado
+    const encodedVal = encodeURIComponent(val || '');
+    const url = new URL(window.location);
+    url.searchParams.set('cookie_value', encodedVal);
+    window.history.replaceState(null, '', url);
+    // También enviar mensaje a Streamlit (opcional)
+    window.parent.postMessage({ type: 'cookie_value', name: data.name, value: val }, '*');
+  }
+});
+</script>
+"""
+def insertar_js_cookies():
+    components.html(js_code, height=0)
+
+
+
+
+def pedir_cookie(nombre):
+    js = f"""
+    <script>
+    window.postMessage({{type: 'get_cookie', name: '{nombre}'}}, '*')
+    </script>
+    """
+    components.html(js, height=0)
+
+def guardar_cookie(nombre, valor, dias=7):
+    js = f"""
+    <script>
+    window.postMessage({{type: 'set_cookie', name: '{nombre}', value: '{valor}', days: {dias}}}, '*')
+    </script>
+    """
+    components.html(js, height=0)
+
+
 
 
 
@@ -84,8 +146,7 @@ def pantalla_inicial():
                 st.session_state.id_sesion = id_input
                 st.session_state.inicio_confirmado = True
                 cargar_sesion(id_input)
-                cookies.set("id_sesion", id_input)
-
+                guardar_cookie("id_sesion", str(id_input))
                 st.success(f"Sesión {id_input} cargada correctamente.")
                 st.rerun()
             else:
@@ -100,7 +161,7 @@ def pantalla_inicial():
     if st.button("🚀 Comenzar nueva partida"):
         nuevo_id = generar_nuevo_id_sesion()
         st.session_state.id_sesion = nuevo_id
-        cookies.set("id_sesion", nuevo_id)
+        guardar_cookie("id_sesion", str(nuevo_id))
         almacenar_parametros("inicio")
         st.session_state.inicio_confirmado = True
         st.session_state.victoria = False
@@ -136,26 +197,24 @@ def init_session_state():
 # MENÚ LATERAL
 # ========================
 def main():
-    cookies.getAll()  # Importante: cargar cookies existentes
-    st.warning(f"Cookie encontrada: {cookies.get('id_sesion')}")
+    insertar_js_cookies()
 
-    # Si no hay sesión pero hay cookie, la usamos
-    session_cookie = cookies.get("id_sesion")
-    if "id_sesion" not in st.session_state and session_cookie:
-        # session_cookie = cookies.get("id_sesion")
-        if session_cookie:
-            st.session_state.id_sesion = session_cookie
-            cargar_sesion(session_cookie)
-            st.session_state.inicio_confirmado = True
-            st.success(f"Sesión {session_cookie} cargada automáticamente desde la cookie.")
-            st.rerun()
+    # Leer parámetro URL que JS actualizará con el valor de la cookie
+    params = st.experimental_get_query_params()
+    cookie_val = params.get("cookie_value", [None])[0]
 
-    # Paso 1: Control de pantalla inicial
+    if cookie_val:
+        st.session_state.id_sesion = cookie_val
+        cargar_sesion(cookie_val)
+        st.session_state.inicio_confirmado = True
+        st.success(f"Sesión {cookie_val} cargada automáticamente desde la cookie.")
+    else:
+        # No cookie: mostrar pantalla inicial normal
+        if not st.session_state.get("inicio_confirmado", False):
+            pantalla_inicial()
+            return
+
     CLAVE_AES = init_session_state()
-    if not st.session_state.get("inicio_confirmado", False):
-        pantalla_inicial()
-        return
-
     st.sidebar.title("Menú")
     pagina = st.sidebar.radio("Navegar a:", ["🎮 Juego", "👥 Jugadores", "🔧 Configuración", "📜 Historial", "📋 Sesiones", "🏠 Inicio", "🗑️ Borrar Sesion Actual"])
 
