@@ -242,7 +242,7 @@ def main():
             st.stop()
 
         # Opciones con valor por defecto vacío usando "" como primera opción
-        juego = st.selectbox("Elige el juego", ["", "UNO", "UNO FLIP", "UNO ALL WILD", "UNO TEAMS", "UNO FLEX", "DOS"])
+        juego = st.selectbox("Elige el juego", ["", "UNO", "UNO_FLIP", "UNO_ALL_WILD", "UNO_TEAMS", "UNO_FLEX", "DOS"])
         modalidad = st.selectbox("Modalidad", ["", "Partidas", "Incremento", "Libre-Partidas", "Libre-Puntos"])
 
         limite = st.number_input("Límite de puntos / partidas", min_value=3, value=3, placeholder="Introduce un número")
@@ -349,11 +349,12 @@ def main():
 
                     ##### COMPROBAR ##### no se muestran las cartas
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
-                        def agregar_carta(carta):
-                            if carta in st.session_state.cartas_seleccionadas:
-                                st.session_state.cartas_seleccionadas[carta] += 1
-                            else:
-                                st.session_state.cartas_seleccionadas[carta] = 1
+                        aplicar_estilos_botones()
+                        # def agregar_carta(carta):
+                        #     if carta in st.session_state.cartas_seleccionadas:
+                        #         st.session_state.cartas_seleccionadas[carta] += 1
+                        #     else:
+                        #         st.session_state.cartas_seleccionadas[carta] = 1
 
                         # def mostrar_cartas(cartas):
                         #     carta_items = list(cartas.items())
@@ -384,25 +385,6 @@ def main():
                                                 else:
                                                     st.session_state.cartas_seleccionadas[carta] = 1
                                                 st.rerun()
-
-
-
-                        st.markdown("""
-                            <style>
-                            div.stButton > button {
-                                background-color: cornflowerblue;
-                                color: white;
-                                border-radius: 8px;
-                                padding: 8px 20px;
-                                font-weight: bold;
-                                transition: background-color 0.3s ease;
-                            }
-                            div.stButton > button:hover {
-                                background-color: royalblue;
-                                color: white;
-                            }
-                            </style>
-                            """, unsafe_allow_html=True)
 
                         if "cartas_seleccionadas" not in st.session_state:
                             st.session_state.cartas_seleccionadas = {}

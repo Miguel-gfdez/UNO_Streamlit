@@ -29,7 +29,7 @@ class Cartas:
             "+2": 20, "BLOQUEO": 20, "DIRECCION": 20,
             "COLOR": 50, "+4": 50
         },
-        "UNO FLIP": {
+        "UNO_FLIP": {
             "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, 
             "+1": 10, "+5": 20, "DIRECCION": 20,"BLOQUEO": 20, "FLIP": 20, "SALTA A TODOS": 30, "COLOR": 40, "+2": 50, "COMODÍN": 60
         },
@@ -39,7 +39,7 @@ class Cartas:
             "#": 40, "COMODIN": 20
         },
 
-        "UNO ALL WILD": {"COLOR": 20, "DIRECCION": 50, "BLOQUEO": 50, "BLOQUEO DOBLE": 50, "+2": 50, "+4": 50, "CAMBIO FORZOSO": 50, "COMODIN +2": 50
+        "UNO_ALL_WILD": {"COLOR": 20, "DIRECCION": 50, "BLOQUEO": 50, "BLOQUEO DOBLE": 50, "+2": 50, "+4": 50, "CAMBIO FORZOSO": 50, "COMODIN +2": 50
         },
 
         "UNO_TEAMS": {
