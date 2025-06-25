@@ -111,13 +111,13 @@ def pantalla_inicial():
         st.rerun()
 
 def borrar_session_state():
-    st.session_state.inicio_confirmado = False
-    st.session_state.inicio_confirmado = True
     st.session_state.victoria = False
     st.session_state.jugadores = []
     st.session_state.inicio = False
     st.session_state.parametros = None
     st.session_state.inicio_confirmado = False
+    st.session_state.id_sesion = None
+
 
 # ========================
 # SESIÓN INICIAL
@@ -692,6 +692,8 @@ def main():
                 st.markdown("### 🗑️ Eliminar todas las sesiones")
                 if st.button("Eliminar TODO"):
                     almacenar_parametros("eliminar")
+                    borrar_session_state()
+                    cookies.remove("id_sesion")
                     st.success("Todas las sesiones han sido eliminadas.")
                     st.rerun()
 
@@ -729,7 +731,6 @@ def main():
     elif pagina == "🗑️ Borrar Sesion Actual":
         almacenar_parametros("eliminar", id=st.session_state.id_sesion)
         borrar_session_state()
-        st.session_state.clear()
         cookies.remove("id_sesion")
         st.rerun()
 
