@@ -195,7 +195,7 @@ def main():
                     st.warning("No se puede eliminar más jugadores. Mínimo 2 jugadores.")
                 elif nombre and any(j.nombre == nombre for j in st.session_state.jugadores):
                     st.session_state.jugadores = [j for j in st.session_state.jugadores if j.nombre != nombre]
-                    almacenar_jugadores("eliminar", "nombre", nombre_original=nombre, id=st.session_state.id_sesion)
+                    almacenar_jugadores(accion="eliminar", nombre_original=nombre, id=st.session_state.id_sesion)
                     st.success(f"{nombre} eliminado.")
 
                 else:
@@ -215,7 +215,7 @@ def main():
                         if j.nombre == nombre:
                             nombre_original = nombre
                             j.nombre = nuevo_nombre
-                            almacenar_jugadores("modificar", "nombre", nombre_original=nombre_original, nombre_nuevo=nuevo_nombre)
+                            almacenar_jugadores("modificar", "nombre", nombre_original=nombre_original, nombre_nuevo=nuevo_nombre, id=st.session_state.id_sesion)
                             st.success(f"{nombre} cambiado a {nuevo_nombre}.")
                             break
 
@@ -226,7 +226,7 @@ def main():
 
         if st.button("Resetear Jugadores"):
             st.session_state.jugadores = []
-            almacenar_jugadores("eliminar")
+            almacenar_jugadores("eliminar", id=st.session_state.id_sesion)
             st.rerun()
 
     # ========================

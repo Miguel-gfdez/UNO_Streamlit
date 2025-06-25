@@ -56,14 +56,26 @@ def almacenar_jugadores(accion, parametro=None, nombre_original=None, nombre_nue
     jugadores = st.session_state.get("jugadores", [])
 
     if accion == "eliminar":
-        if id is not None:
-            # Eliminar jugadores con ese ID_sesion primero
-            client.table("Jugadores").delete().eq("ID_sesion", id).execute()
+        if id is not None and nombre_original is not None:
+            # Eliminar jugador específico de la sesión
+            client.table("Jugadores").delete() \
+                .eq("ID_sesion", id) \
+                .eq("nombre", nombre_original) \
+                .execute()
+        elif id is not None:
+            # Si solo se pasa id, eliminar todos los jugadores de esa sesión
+            client.table("Jugadores").delete() \
+                .eq("ID_sesion", id) \
+                .execute()
         else:
-            # Eliminar todos los jugadores primero
-            client.table("Jugadores").delete().neq("ID_sesion", 0).execute()
+            # Eliminar todos los jugadores de cualquier sesión
+            client.table("Jugadores").delete() \
+                .neq("ID_sesion", 0) \
+                .execute()
             # Luego eliminar todos los parámetros
-            client.table("Parametros").delete().neq("ID_sesion", 0).execute()
+            client.table("Parametros").delete() \
+                .neq("ID_sesion", 0) \
+                .execute()
 
     elif accion == "añadir":
         # Insertar todos los jugadores
@@ -79,12 +91,14 @@ def almacenar_jugadores(accion, parametro=None, nombre_original=None, nombre_nue
             for jugador in jugadores:
                 client.table("Jugadores").update({
                     "puntuacion": jugador.puntos
-                }).eq("nombre", jugador.nombre).execute()
+                }).eq("ID_sesion", id) \
+                .eq("nombre", jugador.nombre).execute()
 
         elif parametro == "nombre" and nombre_original and nombre_nuevo:
             client.table("Jugadores").update({
                 "nombre": nombre_nuevo
-            }).eq("nombre", nombre_original).execute()
+            }).eq("ID_sesion", id) \
+            .eq("nombre", nombre_original).execute()
 
 def almacenar_parametros(accion, id=None):
     client = get_client()
@@ -110,10 +124,6 @@ def almacenar_parametros(accion, id=None):
         else:
             # Eliminar todos (ojo, si quieres mantener algo, evita esto)
             borrar_datos_bd()
-
-    # elif accion == "guardar":
-    #     # Insertar nueva fila (si quieres historico)
-    #     client.table("Parametros").insert(parametros).execute()
 
     elif accion == "actualizar" and id is not None:
         # Para actualizar, quitamos 'time' para no modificarlo
