@@ -311,6 +311,7 @@ def main():
                     st.warning("Por favor, seleccione un jugador.")
                 else:
                     modalidad = st.session_state.parametros.modalidad
+                    st.write(modalidad)
 
                     if modalidad == "Partidas":
                         st.info(f"Jugador seleccionado: **{nombre_jugador}**")
@@ -349,6 +350,7 @@ def main():
 
                     ##### COMPROBAR ##### no se muestran las cartas
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
+                        st.write("A")
                         def agregar_carta(carta):
                             if carta in st.session_state.cartas_seleccionadas:
                                 st.session_state.cartas_seleccionadas[carta] += 1
@@ -404,7 +406,7 @@ def main():
                             </style>
                             """, unsafe_allow_html=True)
 
-
+                        st.write("B")
                         if "cartas_seleccionadas" not in st.session_state:
                             st.session_state.cartas_seleccionadas = {}
 
@@ -425,7 +427,9 @@ def main():
                         else:
                             st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             st.subheader("Selecciona las cartas jugadas")
+                            st.write("C")
                             mostrar_cartas(cartas)
+                            st.write("D")
 
                             total_puntos = 0
                             if st.session_state.cartas_seleccionadas:
@@ -469,7 +473,7 @@ def main():
                                             st.session_state.modo_editar_seleccion = False
                                             st.info("Edición cancelada.")
                                             st.rerun()
-
+                            st.write("E")
                             # Entrada de puntos extra (siempre visible)
                             puntos_extra = st.number_input(
                                 "➕ Añadir puntos manuales (opcional)",
@@ -502,7 +506,7 @@ def main():
 
 
                         # Botón para finalizar la partida (solo en Libre-Puntos)
-                        if modalidad == "Libre-Puntos":
+                        if st.session_state.parametros.modalidad == "Libre-Puntos":
                             if st.button("Finalizar partida"):
                                 st.session_state.partida_finalizada = True
                                 st.session_state.juego_bloqueado = True
