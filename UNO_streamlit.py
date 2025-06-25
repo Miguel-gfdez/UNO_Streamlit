@@ -282,7 +282,7 @@ def main():
 
         if not st.session_state.jugadores or len(st.session_state.jugadores) < 2:
             st.warning(f"Añadir al menos 2 jugadores - Actualmente {len(st.session_state.jugadores)} jugador/es.")
-        elif not st.session_state.parametros:
+        elif not st.session_state.parametros or st.session_state.parametros.juego == "default":
             st.warning("Primero configura el juego.")
         else:
             juego = st.session_state.parametros.juego
