@@ -347,7 +347,7 @@ def main():
                                 else:
                                     st.warning("El nombre no coincide con ningún jugador.")
 
-
+                    ##### COMPROBAR #####
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
                         def agregar_carta(carta):
                             if carta in st.session_state.cartas_seleccionadas:
@@ -468,7 +468,7 @@ def main():
                                     for j in st.session_state.jugadores:
                                         if j.nombre == nombre_jugador:
                                             j.puntos += total_general
-                                            almacenar_jugadores("modificar", "valor")
+                                            almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                                             st.success(f"{j.nombre} gana {total_general} puntos.")
                                     st.session_state.cartas_seleccionadas = {}
                                     st.session_state.nombre_jugador = None
@@ -488,7 +488,7 @@ def main():
                                 st.session_state.juego_bloqueado = True
                                 st.rerun()
 
-
+                    ##### COMPROBAR ##### cuando pulso confirmar ganador, no se muestra la tabla de resultados ni el boton de finalizar, todo a menos que cambie el ganador en el input
                     elif modalidad == "Libre-Partidas":
                         # Para ambos modos, la mecánica es similar (sumar puntos o partidas)
                         # Pero sin terminar automáticamente
@@ -505,7 +505,7 @@ def main():
                                 for j in st.session_state.jugadores:
                                     if j.nombre == nombre_jugador:
                                         j.puntos += puntos_a_sumar
-                                        almacenar_jugadores("modificar", "valor")
+                                        almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                                         st.success(f"{j.nombre} suma {puntos_a_sumar} puntos.")
                             else:
                                 st.warning("El nombre no coincide con ningún jugador.")
@@ -530,7 +530,7 @@ def main():
                 st.session_state.nombre_jugador = ""
                 st.session_state.partida_finalizada = False
                 st.session_state.victoria = False
-                almacenar_jugadores("modificar", "valor")
+                almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                 almacenar_parametros("actualizar", st.session_state.id_sesion)
                 st.success("Puntuaciones reiniciadas.")
                 st.rerun()
@@ -545,11 +545,10 @@ def main():
                     if st.session_state.victoria == False:
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
-                        almacenar_jugadores("modificar", "valor")
+                        almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                         almacenar_parametros("actualizar", st.session_state.id_sesion)
 
                     mostrar_podio(st.session_state.jugadores)  # <-- Aquí mostramos el podio
-
 
             elif st.session_state.parametros.modalidad == "Partidas":
                 max_partidas = st.session_state.parametros.puntos
@@ -568,7 +567,7 @@ def main():
                     if not st.session_state.victoria:
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
-                        almacenar_jugadores("modificar", "valor")
+                        almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                         almacenar_parametros("actualizar", st.session_state.id_sesion)
                     mostrar_podio(st.session_state.jugadores)
 
@@ -588,10 +587,9 @@ def main():
                     if not st.session_state.victoria:
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
-                        almacenar_jugadores("modificar", "valor")
+                        almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                         almacenar_parametros("actualizar", st.session_state.id_sesion)
                     mostrar_podio(st.session_state.jugadores)
-
 
             # NUEVO: Mostrar ganador para modos Libre-Partidas y Libre-Puntos solo si se finalizó manualmente
             elif st.session_state.parametros.modalidad in ["Libre-Partidas", "Libre-Puntos"]:
@@ -610,7 +608,7 @@ def main():
                     if st.session_state.victoria == False:
                         registrar_resultado(mensaje)
                         st.session_state.victoria = True
-                        almacenar_jugadores("modificar", "valor")
+                        almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
                         almacenar_parametros("actualizar", st.session_state.id_sesion)
                     
                     # Mostrar podio ordenado con todos los jugadores
