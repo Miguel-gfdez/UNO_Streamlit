@@ -15,7 +15,7 @@ from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_s
 # ========================
 # Inicializar el controlador
 cookies = CookieController()
-cookies.load_cookies()  # Importante: cargar cookies existentes
+# cookies.getAll()  # Importante: cargar cookies existentes
 
 # ========================
 # FUNCIONES AUXILIARES
@@ -84,6 +84,7 @@ def pantalla_inicial():
                 st.session_state.id_sesion = id_input
                 st.session_state.inicio_confirmado = True
                 cargar_sesion(id_input)
+                cookies.set("id_sesion", id_input)
 
                 st.success(f"Sesión {id_input} cargada correctamente.")
                 st.rerun()
@@ -99,15 +100,14 @@ def pantalla_inicial():
     if st.button("🚀 Comenzar nueva partida"):
         nuevo_id = generar_nuevo_id_sesion()
         st.session_state.id_sesion = nuevo_id
-        cookies.set_cookie("id_sesion", nuevo_id)
-        cookies.save_cookies()
+        cookies.set("id_sesion", nuevo_id)
         almacenar_parametros("inicio")
         st.session_state.inicio_confirmado = True
         st.session_state.victoria = False
         st.session_state.jugadores = []
         st.session_state.inicio = False
         st.session_state.parametros = None
-        # st.success(f"Nueva sesión creada con ID {nuevo_id}.")
+        st.success(f"Nueva sesión creada con ID {nuevo_id}.")
         st.rerun()
 
 
@@ -115,8 +115,7 @@ def pantalla_inicial():
 # SESIÓN INICIAL
 # ========================
 def init_session_state():
-    # CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-    CLAVE_AES = "contraseñaAESdecifradoydescifrado"
+    CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
 
     # Solo inicializa variables si no existen para no sobreescribir en cada run
     if "victoria" not in st.session_state:
@@ -137,11 +136,13 @@ def init_session_state():
 # MENÚ LATERAL
 # ========================
 def main():
-    CLAVE_AES = init_session_state()
+    cookies.getAll()  # Importante: cargar cookies existentes
+    st.warning(f"Cookie encontrada: {cookies.get('id_sesion')}")
 
     # Si no hay sesión pero hay cookie, la usamos
-    if "id_sesion" not in st.session_state:
-        session_cookie = cookies.get_cookie("id_sesion")
+    session_cookie = cookies.get("id_sesion")
+    if "id_sesion" not in st.session_state and session_cookie:
+        # session_cookie = cookies.get("id_sesion")
         if session_cookie:
             st.session_state.id_sesion = session_cookie
             cargar_sesion(session_cookie)
@@ -150,6 +151,7 @@ def main():
             st.rerun()
 
     # Paso 1: Control de pantalla inicial
+    CLAVE_AES = init_session_state()
     if not st.session_state.get("inicio_confirmado", False):
         pantalla_inicial()
         return
@@ -164,7 +166,7 @@ def main():
     if pagina == "👥 Jugadores":
         st.title("Gestión de Jugadores")
         st.write("Sesión actual:", st.session_state.get("id_sesion"))
-
+        
         aplicar_estilos_botones()
 
         nombre = st.text_input("Nombre del jugador").capitalize()
@@ -236,7 +238,10 @@ def main():
         # Opciones con valor por defecto vacío usando "" como primera opción
         juego = st.selectbox("Elige el juego", ["", "UNO", "UNO FLIP", "UNO ALL WILD", "UNO TEAMS", "UNO FLEX", "DOS"])
         modalidad = st.selectbox("Modalidad", ["", "Partidas", "Incremento", "Libre-Partidas", "Libre-Puntos"])
-        limite = st.number_input("Límite de puntos / partidas", min_value=3, value=3, placeholder="Introduce un número")
+
+        paso = len(st.session_state.jugadores)+1 if modalidad == "Partidas" else 50
+
+        limite = st.number_input("Límite de puntos / partidas", min_value=3, value=3, step=paso, placeholder="Introduce un número")
 
         if st.button("Aplicar configuración"):
             if not juego or not modalidad or not limite:
@@ -710,8 +715,13 @@ def main():
     # ========================
     elif pagina == "🏠 Inicio":
         st.session_state.inicio_confirmado = False
-        cookies.delete_cookie("id_sesion")
-        cookies.save_cookies()
+        st.session_state.inicio_confirmado = True
+        st.session_state.victoria = False
+        st.session_state.jugadores = []
+        st.session_state.inicio = False
+        st.session_state.parametros = None
+        st.session_state.inicio_confirmado = False
+        cookies.remove("id_sesion")
         st.rerun()
     
     # ========================
@@ -728,8 +738,7 @@ def main():
         st.session_state.inicio = False
         st.session_state.parametros = None
         st.session_state.inicio_confirmado = False
-        cookies.delete_cookie("id_sesion")
-        cookies.save_cookies()
+        cookies.remove("id_sesion")
         st.rerun()
 
 
