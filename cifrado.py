@@ -66,6 +66,7 @@ def derivar_clave(password, salt):
     return clave
 
 def registrar_resultado(mensaje):
+    st.write(mensaje)
     try:
         clave = derivar_clave(password, salt)
         mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
@@ -77,14 +78,19 @@ def registrar_resultado(mensaje):
 
         # Revisar si hay error
         if hasattr(response, "error") and response.error is not None:
-            st.error(f"Error al insertar: {response.error}")
+            # st.error(f"Error al insertar: {response.error}")
+            pass
         elif response.status_code not in (200, 201):
-            st.error(f"Error al insertar: Código {response.status_code}")
+            # st.error(f"Error al insertar: Código {response.status_code}")
+            pass
         else:
-            st.success("Datos guardados correctamente")
+            # st.success("Datos guardados correctamente")
+            pass
 
     except Exception as e:
-        st.error(f"Excepción en registrar_resultado: {e}")
+        # print("Error cifrado:", e)
+        pass
+        # Aquí no mostrar variables sensibles
 
 
 def mostrar_resultados():
