@@ -13,14 +13,10 @@ from bbdd import get_client
 # ========================
 # FUNCIONES DE CIFRADO
 # ========================
-password = os.getenv("CLAVE_AES")#.encode()
-st.warning(type(password))
-st.warning(type(password.encode()))
+password = os.getenv("CLAVE_AES").encode()
 
 salt_b64 = os.getenv("SALT")
 salt = base64.b64decode(salt_b64)
-st.warning(type(salt_b64))
-st.warning(type(salt))
 
 def cifrar_aes(mensaje, clave):
     padder = sym_padding.PKCS7(128).padder()
@@ -66,7 +62,6 @@ def derivar_clave(password, salt):
     return clave
 
 def registrar_resultado(mensaje):
-    st.write(mensaje)
     try:
         clave = derivar_clave(password, salt)
         mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
@@ -91,7 +86,6 @@ def registrar_resultado(mensaje):
         # print("Error cifrado:", e)
         pass
         # Aquí no mostrar variables sensibles
-
 
 def mostrar_resultados():
     clave = derivar_clave(password, salt)
