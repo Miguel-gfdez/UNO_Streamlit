@@ -311,7 +311,6 @@ def main():
                     st.warning("Por favor, seleccione un jugador.")
                 else:
                     modalidad = st.session_state.parametros.modalidad
-                    st.write(modalidad)
 
                     if modalidad == "Partidas":
                         st.info(f"Jugador seleccionado: **{nombre_jugador}**")
@@ -350,7 +349,6 @@ def main():
 
                     ##### COMPROBAR ##### no se muestran las cartas
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
-                        st.write("A")
                         def agregar_carta(carta):
                             if carta in st.session_state.cartas_seleccionadas:
                                 st.session_state.cartas_seleccionadas[carta] += 1
@@ -406,7 +404,6 @@ def main():
                             </style>
                             """, unsafe_allow_html=True)
 
-                        st.write("B")
                         if "cartas_seleccionadas" not in st.session_state:
                             st.session_state.cartas_seleccionadas = {}
 
@@ -428,6 +425,7 @@ def main():
                             st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             st.subheader("Selecciona las cartas jugadas")
                             st.write("C")
+                            st.write(cartas)
                             mostrar_cartas(cartas)
                             st.write("D")
 
