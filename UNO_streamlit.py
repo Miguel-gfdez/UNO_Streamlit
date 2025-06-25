@@ -406,11 +406,7 @@ def main():
                         else:
                             st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             st.subheader("Selecciona las cartas jugadas")
-                            st.write("C")
-                            st.write("Juego:", juego)
-                            st.write("Cartas:", cartas)
                             mostrar_cartas(cartas)
-                            st.write("D")
 
                             total_puntos = 0
                             if st.session_state.cartas_seleccionadas:
@@ -454,7 +450,7 @@ def main():
                                             st.session_state.modo_editar_seleccion = False
                                             st.info("Edición cancelada.")
                                             st.rerun()
-                            st.write("E")
+
                             # Entrada de puntos extra (siempre visible)
                             puntos_extra = st.number_input(
                                 "➕ Añadir puntos manuales (opcional)",
