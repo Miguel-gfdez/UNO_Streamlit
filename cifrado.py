@@ -48,6 +48,11 @@ def descifrar_aes(token_b64, clave):
     return mensaje
 
 def derivar_clave(password, salt):
+    if isinstance(password, str):
+        password = password.encode()  # Convertir a bytes si viene como string
+    if isinstance(salt, str):
+        salt = base64.b64decode(salt)  # Decodificar si es base64 string
+
     # Derivar la clave AES con PBKDF2HMAC
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -59,19 +64,6 @@ def derivar_clave(password, salt):
 
     clave = kdf.derive(password)  # clave derivada para usar en AES
     return clave
-
-# def registrar_resultado(mensaje):
-#     try:
-#         clave = derivar_clave(password, salt)
-#         mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
-#         mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
-
-#         client = get_client()
-#         data = {"resultados": mensaje_cifrado}
-#         res = client.table("Historial").insert(data).execute()
-
-#     except Exception as e:
-#         pass
 
 def registrar_resultado(mensaje):
     try:
