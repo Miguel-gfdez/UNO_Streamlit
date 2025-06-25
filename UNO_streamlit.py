@@ -137,7 +137,7 @@ def init_session_state():
 # ========================
 def main():
     cookies.getAll()  # Importante: cargar cookies existentes
-    st.warning(f"Cookie encontrada: {cookies.get('id_sesion')}")
+    # st.warning(f"Cookie encontrada: {cookies.get('id_sesion')}")
 
     # Si no hay sesión pero hay cookie, la usamos
     session_cookie = cookies.get("id_sesion")
