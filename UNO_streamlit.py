@@ -110,6 +110,14 @@ def pantalla_inicial():
         st.success(f"Nueva sesión creada con ID {nuevo_id}.")
         st.rerun()
 
+def borrar_session_state():
+    st.session_state.inicio_confirmado = False
+    st.session_state.inicio_confirmado = True
+    st.session_state.victoria = False
+    st.session_state.jugadores = []
+    st.session_state.inicio = False
+    st.session_state.parametros = None
+    st.session_state.inicio_confirmado = False
 
 # ========================
 # SESIÓN INICIAL
@@ -694,11 +702,10 @@ def main():
                 if st.button("Eliminar sesión"):
                     existe = any(s["ID_sesion"] == sesion_id_a_eliminar for s in sesiones)
                     if existe:
-                        # st.warning(sesion_id_a_eliminar)
                         almacenar_parametros("eliminar", id=sesion_id_a_eliminar)
                         st.success(f"Sesión {sesion_id_a_eliminar} eliminada correctamente.")
                         if sesion_id_a_eliminar == cookies.get("id_sesion"):
-                            st.session_state.clear()
+                            borrar_session_state()
                             cookies.remove("id_sesion")
                         st.rerun()
                     else:
@@ -709,14 +716,7 @@ def main():
     # ESta sección permite volver a la pantalla de inicio, reiniciando el estado de la aplicación
     # ========================
     elif pagina == "🏠 Inicio":
-        # st.session_state.inicio_confirmado = False
-        # st.session_state.inicio_confirmado = True
-        # st.session_state.victoria = False
-        # st.session_state.jugadores = []
-        # st.session_state.inicio = False
-        # st.session_state.parametros = None
-        # st.session_state.inicio_confirmado = False
-        st.session_state.clear()
+        borrar_session_state()
         cookies.remove("id_sesion")
         st.rerun()
     
@@ -728,12 +728,7 @@ def main():
     # ========================
     elif pagina == "🗑️ Borrar Sesion Actual":
         almacenar_parametros("eliminar", id=st.session_state.id_sesion)
-        # st.session_state.inicio_confirmado = True
-        # st.session_state.victoria = False
-        # st.session_state.jugadores = []
-        # st.session_state.inicio = False
-        # st.session_state.parametros = None
-        # st.session_state.inicio_confirmado = False
+        borrar_session_state()
         st.session_state.clear()
         cookies.remove("id_sesion")
         st.rerun()
