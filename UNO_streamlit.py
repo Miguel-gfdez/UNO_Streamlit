@@ -103,7 +103,8 @@ def pantalla_inicial():
 # SESIÓN INICIAL
 # ========================
 def init_session_state():
-    CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+    # CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
+    CLAVE_AES = "contraseñaAESdecifradoydescifrado".encode()
 
     # Solo inicializa variables si no existen para no sobreescribir en cada run
     if "victoria" not in st.session_state:

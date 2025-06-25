@@ -12,9 +12,13 @@ from bbdd import get_client
 # ========================
 # FUNCIONES DE CIFRADO
 # ========================
-password = os.getenv("CLAVE_AES").encode()
-salt_b64 = os.getenv("SALT")
-salt = base64.b64decode(salt_b64)
+# password = os.getenv("CLAVE_AES").encode()
+# salt_b64 = os.getenv("SALT")
+# salt = base64.b64decode(salt_b64)
+
+password = "contraseñaAESdecifradoydescifrado".encode()
+SALT = "u6P7H5df0Ks4rzLMgC0+Yj=="
+salt = base64.b64decode(SALT)
 
 def cifrar_aes(mensaje, clave):
     padder = sym_padding.PKCS7(128).padder()
