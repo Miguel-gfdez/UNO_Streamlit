@@ -107,7 +107,6 @@ def pantalla_inicial():
         st.session_state.jugadores = []
         st.session_state.inicio = False
         st.session_state.parametros = None
-        st.success(f"Nueva sesión creada con ID {nuevo_id}.")
         st.rerun()
 
 def borrar_session_state():
@@ -196,7 +195,7 @@ def main():
                     st.warning("No se puede eliminar más jugadores. Mínimo 2 jugadores.")
                 elif nombre and any(j.nombre == nombre for j in st.session_state.jugadores):
                     st.session_state.jugadores = [j for j in st.session_state.jugadores if j.nombre != nombre]
-                    almacenar_jugadores("eliminar", "nombre", nombre_original=nombre)
+                    almacenar_jugadores("eliminar", "nombre", nombre_original=nombre, id=st.session_state.id_sesion)
                     st.success(f"{nombre} eliminado.")
 
                 else:
@@ -246,9 +245,7 @@ def main():
         juego = st.selectbox("Elige el juego", ["", "UNO", "UNO FLIP", "UNO ALL WILD", "UNO TEAMS", "UNO FLEX", "DOS"])
         modalidad = st.selectbox("Modalidad", ["", "Partidas", "Incremento", "Libre-Partidas", "Libre-Puntos"])
 
-        paso = len(st.session_state.jugadores)+1 if modalidad == "Partidas" else 50
-
-        limite = st.number_input("Límite de puntos / partidas", min_value=3, value=3, step=paso, placeholder="Introduce un número")
+        limite = st.number_input("Límite de puntos / partidas", min_value=3, value=3, placeholder="Introduce un número")
 
         if st.button("Aplicar configuración"):
             if not juego or not modalidad or not limite:
