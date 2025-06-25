@@ -347,7 +347,7 @@ def main():
                                 else:
                                     st.warning("El nombre no coincide con ningún jugador.")
 
-                    ##### COMPROBAR #####
+                    ##### COMPROBAR ##### no se muestran las cartas
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
                         def agregar_carta(carta):
                             if carta in st.session_state.cartas_seleccionadas:
@@ -355,18 +355,36 @@ def main():
                             else:
                                 st.session_state.cartas_seleccionadas[carta] = 1
 
+                        # def mostrar_cartas(cartas):
+                        #     carta_items = list(cartas.items())
+                        #     columnas_por_fila = 3  # más adaptable a móviles
+
+                        #     for i in range(0, len(carta_items), columnas_por_fila):
+                        #         cols = st.columns(columnas_por_fila)
+                        #         for j in range(columnas_por_fila):
+                        #             if i + j < len(carta_items):
+                        #                 carta, _ = carta_items[i + j]
+                        #                 with cols[j]:
+                        #                     if st.button(f"{carta}", key=f"carta_{carta}"):
+                        #                         agregar_carta(carta)
                         def mostrar_cartas(cartas):
                             carta_items = list(cartas.items())
-                            columnas_por_fila = 3  # más adaptable a móviles
+                            columnas_por_fila = 3
 
                             for i in range(0, len(carta_items), columnas_por_fila):
                                 cols = st.columns(columnas_por_fila)
                                 for j in range(columnas_por_fila):
-                                    if i + j < len(carta_items):
-                                        carta, _ = carta_items[i + j]
+                                    idx = i + j
+                                    if idx < len(carta_items):
+                                        carta, _ = carta_items[idx]
                                         with cols[j]:
-                                            if st.button(f"{carta}", key=f"carta_{carta}"):
-                                                agregar_carta(carta)
+                                            if st.button(f"{carta}", key=f"carta_{idx}_{carta}"):
+                                                if carta in st.session_state.cartas_seleccionadas:
+                                                    st.session_state.cartas_seleccionadas[carta] += 1
+                                                else:
+                                                    st.session_state.cartas_seleccionadas[carta] = 1
+                                                st.rerun()
+
 
 
                         st.markdown("""
@@ -488,7 +506,6 @@ def main():
                                 st.session_state.juego_bloqueado = True
                                 st.rerun()
 
-                    ##### COMPROBAR ##### cuando pulso confirmar ganador, no se muestra la tabla de resultados ni el boton de finalizar, todo a menos que cambie el ganador en el input
                     elif modalidad == "Libre-Partidas":
                         # Para ambos modos, la mecánica es similar (sumar puntos o partidas)
                         # Pero sin terminar automáticamente
@@ -506,7 +523,7 @@ def main():
                                     if j.nombre == nombre_jugador:
                                         j.puntos += puntos_a_sumar
                                         almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
-                                        st.success(f"{j.nombre} suma {puntos_a_sumar} puntos.")
+                                        st.success(f"{j.nombre} suma {puntos_a_sumar} punto/s.")
                             else:
                                 st.warning("El nombre no coincide con ningún jugador.")
 
