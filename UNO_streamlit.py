@@ -360,7 +360,7 @@ def main():
                                             j.puntos += 1
                                             contador_partidas += 1
                                     almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
-                                    st.rerun()
+                                    # st.rerun()
                                     st.success(f"{nombre_jugador} ha ganado 1 punto.")
 
                                 else:
