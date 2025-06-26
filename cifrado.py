@@ -95,7 +95,7 @@ def registrar_resultado(mensaje):
         # Manejo de errores (opcional, ya lo tienes)
         if hasattr(response, "error") and response.error is not None:
             pass
-        elif response.status_code not in (200, 201):
+        else:
             pass
 
     except Exception:
