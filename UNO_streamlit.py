@@ -668,7 +668,7 @@ def main():
                         st.info("No hay resultados disponibles.")
                     else:
                         for r in resultados:
-                            st.write(f"ID: {r['id']} - Resultado: {r['mensaje']}")
+                            st.write(f"ID: {r['id']} - {r['mensaje']}")
 
                         # Input para eliminar registro por ID
                         id_borrar = st.text_input("Introduce el ID del registro a eliminar")
@@ -690,11 +690,9 @@ def main():
                                         st.success(f"Registro con ID {id_borrar} eliminado correctamente.")
                                         # Reenumerar IDs tras eliminar
                                         reenumerar_ids()
-                                        st.experimental_rerun()
+                                        st.rerun()
                                 except Exception as e:
                                     st.error(f"Error al eliminar registro: {str(e)}")
-
-
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
 

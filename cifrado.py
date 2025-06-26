@@ -1,6 +1,7 @@
 import os
 import base64
 import streamlit as st
+from zoneinfo import ZoneInfo
 from datetime import datetime
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
@@ -76,11 +77,14 @@ def obtener_siguiente_id():
 def registrar_resultado(mensaje):
     try:
         clave = derivar_clave(password, salt)
-        mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
+
+        # Obtener hora actual en UTC
+        now_utc = datetime.now(tz=ZoneInfo("UTC"))
+        # Convertir a hora local (por ejemplo, Madrid)
+        now_local = now_utc.astimezone(ZoneInfo("Europe/Madrid"))
+        mensaje = now_local.strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
         mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
-
         id_registro = obtener_siguiente_id()
-
         client = get_client()
         data = {
             "id": id_registro,
