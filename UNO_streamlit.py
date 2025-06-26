@@ -655,11 +655,21 @@ def main():
     # ========================
     elif pagina == "📜 Historial":
         aplicar_estilos_botones()
-        password_input = st.text_input("Introduzca la contraseña", type="password")
 
-        if st.button("Confirmar"):
-            if password_input:
-                if password_input.encode() == CLAVE_AES:
+        # Guardar la contraseña en session_state para no perderla
+        if "password_input" not in st.session_state:
+            st.session_state.password_input = ""
+
+        st.session_state.password_input = st.text_input(
+            "Introduzca la contraseña",
+            type="password",
+            value=st.session_state.password_input,
+            key="password_input_key"
+        )
+
+        if st.button("Confirmar") or st.session_state.password_input:
+            if st.session_state.password_input:
+                if st.session_state.password_input.encode() == CLAVE_AES:
                     st.success("Contraseña correcta. Acceso concedido. Descifrando resultados...")
                     st.subheader("Historial de Resultados")
                     resultados = mostrar_resultados()
@@ -692,9 +702,9 @@ def main():
 
                                 except Exception as e:
                                     st.error(f"Error al eliminar registro: {str(e)}")
-
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
+
 
     
     # ========================
