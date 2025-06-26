@@ -31,10 +31,12 @@ def reenumerar_ids():
             if id_actual != nuevo_id:
                 # Actualizar id para que sea secuencial
                 update_resp = client.table("Historial").update({"id": nuevo_id}).eq("id", id_actual).execute()
-                if update_resp.status_code not in (200, 204):
-                    st.error(f"Error actualizando id {id_actual} a {nuevo_id}")
+
+                if hasattr(update_resp, "error") and update_resp.error is not None:
+                    st.error(f"Error actualizando id {id_actual} a {nuevo_id}: {update_resp.error.message}")
     else:
         pass
+
 
 def pantalla_inicial():
     st.markdown("""
