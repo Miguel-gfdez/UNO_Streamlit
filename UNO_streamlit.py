@@ -15,11 +15,27 @@ from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_s
 # ========================
 # Inicializar el controlador
 cookies = CookieController()
-# cookies.getAll()  # Importante: cargar cookies existentes
 
 # ========================
 # FUNCIONES AUXILIARES
 # ========================
+def reenumerar_ids():
+    client = get_client()
+    # Obtener todos los registros ordenados por id ascendente
+    response = client.table("Historial").select("id").order("id", ascending=True).execute()
+
+    if response.data:
+        registros = response.data
+        for nuevo_id, registro in enumerate(registros, start=1):
+            id_actual = registro["id"]
+            if id_actual != nuevo_id:
+                # Actualizar id para que sea secuencial
+                update_resp = client.table("Historial").update({"id": nuevo_id}).eq("id", id_actual).execute()
+                if update_resp.status_code not in (200, 204):
+                    st.error(f"Error actualizando id {id_actual} a {nuevo_id}")
+    else:
+        pass
+
 def pantalla_inicial():
     st.markdown("""
         <style>
@@ -119,7 +135,6 @@ def borrar_session_state():
     st.session_state.id_sesion = None
     st.session_state.cartas_seleccionadas = None
     st.session_state.partida_finalizada = False
-
 
 # ========================
 # SESIÓN INICIAL
@@ -641,20 +656,48 @@ def main():
     elif pagina == "📜 Historial":
         aplicar_estilos_botones()
         password_input = st.text_input("Introduzca la contraseña", type="password")
-        
+
         if st.button("Confirmar"):
             if password_input:
                 if password_input.encode() == CLAVE_AES:
                     st.success("Contraseña correcta. Acceso concedido. Descifrando resultados...")
                     st.subheader("Historial de Resultados")
                     resultados = mostrar_resultados()
+
                     if not resultados:
                         st.info("No hay resultados disponibles.")
-                    for resultado in resultados:
-                        st.write(resultado)                
+                    else:
+                        for r in resultados:
+                            st.write(f"ID: {r['id']} - Resultado: {r['mensaje']}")
+
+                        # Input para eliminar registro por ID
+                        id_borrar = st.text_input("Introduce el ID del registro a eliminar")
+
+                        if st.button("Eliminar registro"):
+                            if not id_borrar.strip():
+                                st.warning("Introduce un ID válido para eliminar.")
+                            else:
+                                try:
+                                    client = get_client()
+                                    # Borra el registro con el id especificado
+                                    response = client.table("Historial").delete().eq("id", int(id_borrar)).execute()
+
+                                    if hasattr(response, "error") and response.error is not None:
+                                        st.error(f"Error al eliminar: {response.error.message}")
+                                    elif response.status_code not in (200, 204):
+                                        st.error(f"Error al eliminar: Código {response.status_code}")
+                                    else:
+                                        st.success(f"Registro con ID {id_borrar} eliminado correctamente.")
+                                        # Reenumerar IDs tras eliminar
+                                        reenumerar_ids()
+                                        st.experimental_rerun()
+                                except Exception as e:
+                                    st.error(f"Error al eliminar registro: {str(e)}")
+
 
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
+
     
     # ========================
     # Sesiones Activas

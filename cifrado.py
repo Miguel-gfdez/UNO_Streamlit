@@ -61,47 +61,65 @@ def derivar_clave(password, salt):
     clave = kdf.derive(password)  # clave derivada para usar en AES
     return clave
 
+
+def obtener_siguiente_id():
+    client = get_client()
+    response = client.table("Historial").select("id").execute()
+    
+    if response.data:
+        # Obtener el máximo ID actual
+        ids = [fila["id"] for fila in response.data if "id" in fila]
+        if ids:
+            return max(ids) + 1
+    return 1  # Si no hay registros, empezar por 1
+
 def registrar_resultado(mensaje):
     try:
         clave = derivar_clave(password, salt)
         mensaje = datetime.now().strftime("%Y-%m-%dT%H:%M:%S") + " - " + mensaje
         mensaje_cifrado = cifrar_aes(mensaje.encode(), clave)
 
+        id_registro = obtener_siguiente_id()
+
         client = get_client()
-        data = {"resultados": mensaje_cifrado}
+        data = {
+            "id": id_registro,
+            "resultados": mensaje_cifrado
+        }
         response = client.table("Historial").insert(data).execute()
 
-        # Revisar si hay error
+        # Manejo de errores (opcional, ya lo tienes)
         if hasattr(response, "error") and response.error is not None:
-            # st.error(f"Error al insertar: {response.error}")
             pass
         elif response.status_code not in (200, 201):
-            # st.error(f"Error al insertar: Código {response.status_code}")
-            pass
-        else:
-            # st.success("Datos guardados correctamente")
             pass
 
-    except Exception as e:
-        # print("Error cifrado:", e)
+    except Exception:
         pass
-        # Aquí no mostrar variables sensibles
 
 def mostrar_resultados():
     clave = derivar_clave(password, salt)
     resultados = []
-    # Crear cliente de Supabase para conectarse a la base de datos
     client = get_client()
-    response = client.table("Historial").select("resultados").execute()
+    response = client.table("Historial").select("*").execute()  # Obtener todos los campos
 
     if response.data:
         for fila in response.data:
             mensaje_cifrado = fila.get("resultados", "")
+            id_registro = fila.get("id", None)  # Por si quieres mostrarlo también
             if mensaje_cifrado:
                 try:
-                    mensaje_descifrado = descifrar_aes(mensaje_cifrado, clave)
-                    resultados.append(mensaje_descifrado.decode())
-                except Exception as e:
-                    resultados.append("[Error al descifrar]")
+                    mensaje_descifrado = descifrar_aes(mensaje_cifrado, clave).decode()
+                except Exception:
+                    mensaje_descifrado = "[Error al descifrar]"
+            else:
+                mensaje_descifrado = "[Sin mensaje]"
+            
+            resultados.append({
+                "id": id_registro,
+                "mensaje": mensaje_descifrado
+            })
+
     return resultados
+
 
