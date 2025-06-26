@@ -314,13 +314,14 @@ def main():
                 st.session_state.inicio = True
                 almacenar_parametros("actualizar", st.session_state.id_sesion)
                 almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
-                st.success("Parámetros configurados correctamente.")
+                # st.success("Parámetros configurados correctamente.")
+                if st.session_state.parametros:
+                    st.info(st.session_state.parametros.ver_parametros())
                 st.rerun()
 
 
 
-        if st.session_state.parametros:
-            st.info(st.session_state.parametros.ver_parametros())
+        
 
     # ========================
     # JUEGO
