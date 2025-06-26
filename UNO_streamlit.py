@@ -250,31 +250,6 @@ def main():
 
         limite = st.number_input("Límite de puntos / partidas", min_value=3, value=3, placeholder="Introduce un número")
 
-        # if st.button("Aplicar configuración"):
-        #     if not juego or not modalidad or not limite:
-        #         st.warning("Por favor, completa todos los campos.")
-        #     else:
-        #         if modalidad == "Partidas":
-        #             if limite % len(st.session_state.jugadores) != 1:
-        #                 st.warning("El límite de partidas no es válido.")
-        #             else:
-        #                 st.session_state.parametros = Parametros(juego, modalidad, limite)
-        #                 st.session_state.inicio = True
-        #                 almacenar_parametros("actualizar", st.session_state.id_sesion)
-        #                 st.success("Parámetros configurados correctamente.")
-        #         elif modalidad == "Incremento":
-        #             if limite < 100:
-        #                 st.warning("El límite de puntos debe ser mayor o igual a 100.")
-        #             else:
-        #                 st.session_state.parametros = Parametros(juego, modalidad, limite)
-        #                 st.session_state.inicio = True
-        #                 almacenar_parametros("actualizar", st.session_state.id_sesion)
-        #                 st.success("Parámetros configurados correctamente.")
-        #         else:
-        #             st.session_state.parametros = Parametros(juego, modalidad, 0)
-        #             st.session_state.inicio = True
-        #             almacenar_parametros("actualizar", st.session_state.id_sesion)
-        #             st.success("Parámetros configurados correctamente.")
         if st.button("Aplicar configuración"):
             if not juego or not modalidad or not limite:
                 st.warning("Por favor, completa todos los campos.")
@@ -385,8 +360,9 @@ def main():
                                             j.puntos += 1
                                             contador_partidas += 1
                                     almacenar_jugadores("modificar", "valor", id=st.session_state.id_sesion)
-                                    st.success(f"{nombre_jugador} ha ganado 1 punto.")
                                     st.rerun()
+                                    st.success(f"{nombre_jugador} ha ganado 1 punto.")
+
                                 else:
                                     st.warning("El nombre no coincide con ningún jugador.")
 
