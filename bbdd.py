@@ -11,6 +11,7 @@ def get_client():
     try:
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_KEY")
+
     except Exception as e:
         url = " "
         key = " "
@@ -153,6 +154,12 @@ def cargar_sesion(id_sesion):
         st.session_state.victoria = p.get("victoria", False)
         st.session_state.inicio = True
         st.session_state.cartas = Cartas.obtener_cartas(p["juego"])
+
+        # Inicializar cartas_seleccionadas si no existe
+        if "cartas_seleccionadas" not in st.session_state or st.session_state.cartas_seleccionadas is None:
+            st.session_state.cartas_seleccionadas = {}
+        if "nombre_jugador" not in st.session_state:
+            st.session_state.nombre_jugador = None
 
 
 

@@ -4,10 +4,9 @@ import streamlit as st
 from streamlit_cookies_controller import CookieController
 
 from clases import Jugador, Parametros, Cartas
-from utils import mostrar_podio, aplicar_estilos_botones
 from cifrado import registrar_resultado, mostrar_resultados
 from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_sesion, generar_nuevo_id_sesion
-
+from utils import mostrar_podio, aplicar_estilos_botones, progreso_incremento, progreso_partidas, borrar_session_state, reenumerar_ids_historial
 
 
 # ========================
@@ -17,46 +16,33 @@ from bbdd import get_client, almacenar_jugadores, almacenar_parametros, cargar_s
 cookies = CookieController()
 
 # ========================
-# FUNCIONES AUXILIARES
+# SESIÓN INICIAL
 # ========================
-def reenumerar_ids():
-    client = get_client()
-    # Obtener todos los registros ordenados por id ascendente
-    response = client.table("Historial").select("id").order("id", desc=False).execute()
+def init_session_state():
+    CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
 
-    if response.data:
-        registros = response.data
-        for nuevo_id, registro in enumerate(registros, start=1):
-            id_actual = registro["id"]
-            if id_actual != nuevo_id:
-                # Actualizar id para que sea secuencial
-                update_resp = client.table("Historial").update({"id": nuevo_id}).eq("id", id_actual).execute()
+    # Solo inicializa variables si no existen para no sobreescribir en cada run
+    if "victoria" not in st.session_state:
+        st.session_state.victoria = False
 
-                if hasattr(update_resp, "error") and update_resp.error is not None:
-                    st.error(f"Error actualizando id {id_actual} a {nuevo_id}: {update_resp.error.message}")
-    else:
-        pass
+    if "jugadores" not in st.session_state:
+        st.session_state.jugadores = []
 
+    if "inicio" not in st.session_state:
+        st.session_state.inicio = False
 
+    if "parametros" not in st.session_state:
+        st.session_state.parametros = None
+    
+    return CLAVE_AES
+
+# ========================
+# Pantalla Principal
+# ========================
 def pantalla_inicial():
-    st.markdown("""
-        <style>
-        div.stButton > button {
-            background-color: cornflowerblue;
-            color: white;
-            border-radius: 8px;
-            padding: 8px 20px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        div.stButton > button:hover {
-            background-color: royalblue;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    aplicar_estilos_botones()
+    
 
-    # st.title("🎲 Bienvenido/a")
     st.markdown(
     "<div style='text-align: right; font-size: 14px; color: gray;'>🌐 Idioma: Spanish</div>",
     unsafe_allow_html=True)
@@ -67,29 +53,74 @@ def pantalla_inicial():
 
     # Mostrar sesiones existentes
     st.subheader("📋 Sesiones anteriores")
-    sesiones_res = client.table("Parametros").select("ID_sesion, victoria").execute()
+    sesiones_res = client.table("Parametros").select("ID_sesion, victoria").order("ID_sesion", desc=True).execute()
     sesiones = sesiones_res.data if sesiones_res.data else []
 
     if sesiones:
         for sesion in sesiones:
             id_sesion = sesion["ID_sesion"]
-            estado = "✅ Finalizada" if sesion["victoria"] else "⏳ En curso"
+            victoria = sesion["victoria"]
+            estado = "✅ Finalizada" if victoria else "⏳ En curso"
             st.markdown(f"#### 🆔 Sesión {id_sesion} — {estado}")
 
-            # Mostrar parámetros de la sesión
             parametros_res = client.table("Parametros").select("juego, modalidad, puntos").eq("ID_sesion", id_sesion).execute()
             if parametros_res.data:
                 p = parametros_res.data[0]
                 st.markdown(f"🔧 **Juego:** {p['juego']}  |  🧩 **Modalidad:** {p['modalidad']}  |  🎯 **Puntos/Partidas:** {p['puntos']}")
-            
-            # Mostrar jugadores
-            jugadores_res = client.table("Jugadores").select("nombre, puntuacion").eq("ID_sesion", id_sesion).execute()
-            jugadores = jugadores_res.data if jugadores_res.data else []
-            if jugadores:
-                for j in jugadores:
-                    st.markdown(f"- {j['nombre']}: {j['puntuacion']} puntos")
-            else:
-                st.markdown("*Sin jugadores registrados*")
+
+                # Barra de progreso (solo si la sesión NO está finalizada)
+                
+                jugadores_res = client.table("Jugadores").select("nombre, puntuacion").eq("ID_sesion", id_sesion).execute()
+                jugadores = jugadores_res.data if jugadores_res.data else []
+
+                if p['modalidad'] == "Partidas":
+                    partidas_jugadas = sum(j['puntuacion'] for j in jugadores) if jugadores else 0
+                    limite = p['puntos']
+                    progreso_total = partidas_jugadas / limite if limite else 0
+
+                    minimo_ganador = (limite // 2) + 1
+                    max_partidas_ganadas = max(j['puntuacion'] for j in jugadores) if jugadores else 0
+                    progreso_minimo = max_partidas_ganadas / minimo_ganador if minimo_ganador else 0
+
+                    progreso_partidas(progreso_total, "bar-azul", partidas_jugadas, limite)
+                    progreso_partidas(progreso_minimo, "bar-roja", max_partidas_ganadas, minimo_ganador)
+
+                    # Mostrar jugadores ordenados por puntuación
+                    if jugadores:
+                        jugadores = sorted(jugadores, key=lambda x: x['puntuacion'], reverse=True)
+                        for j in jugadores:
+                            st.markdown(f"- **{j['nombre']}**: {j['puntuacion']} partidas ganadas")
+                    else:
+                        st.markdown("*Sin jugadores registrados*")
+
+
+                elif p['modalidad'] == "Incremento":
+                    limite = p['puntos']
+                    if jugadores:
+                        for j in jugadores:
+                            progreso_jugador = j['puntuacion'] / limite if limite else 0
+                            porcentaje_texto = f"{int(progreso_jugador * 100)}%"
+                            col1, col2 = st.columns([1, 3])  # Proporción para nombre y barra
+
+                            with col1:
+                                st.markdown(f"- **{j['nombre']}**: {j['puntuacion']} puntos")
+
+                            with col2:
+                                st.markdown(progreso_incremento(progreso_jugador, porcentaje_texto), unsafe_allow_html=True)
+
+                    else:
+                        st.markdown("*Sin jugadores registrados*")
+                else:
+                    # Mostrar jugadores (se vuelve a obtener para no repetir código)
+                    jugadores_res = client.table("Jugadores").select("nombre, puntuacion").eq("ID_sesion", id_sesion).execute()
+                    jugadores = jugadores_res.data if jugadores_res.data else []
+
+                    if jugadores:
+                        jugadores = sorted(jugadores, key=lambda x: x['puntuacion'], reverse=True)
+                        for j in jugadores:
+                            st.markdown(f"- {j['nombre']}: {j['puntuacion']} puntos")
+                    else:
+                        st.markdown("*Sin jugadores registrados*")
 
             st.markdown("---")
 
@@ -127,37 +158,6 @@ def pantalla_inicial():
         st.session_state.parametros = None
         st.rerun()
 
-def borrar_session_state():
-    st.session_state.victoria = False
-    st.session_state.jugadores = []
-    st.session_state.inicio = False
-    st.session_state.parametros = None
-    st.session_state.inicio_confirmado = False
-    st.session_state.juego_bloqueado = False
-    st.session_state.id_sesion = None
-    st.session_state.cartas_seleccionadas = None
-    st.session_state.partida_finalizada = False
-
-# ========================
-# SESIÓN INICIAL
-# ========================
-def init_session_state():
-    CLAVE_AES = os.getenv("CLAVE_AES").encode()  # contraseña en bytes
-
-    # Solo inicializa variables si no existen para no sobreescribir en cada run
-    if "victoria" not in st.session_state:
-        st.session_state.victoria = False
-
-    if "jugadores" not in st.session_state:
-        st.session_state.jugadores = []
-
-    if "inicio" not in st.session_state:
-        st.session_state.inicio = False
-
-    if "parametros" not in st.session_state:
-        st.session_state.parametros = None
-    
-    return CLAVE_AES
 
 # ========================
 # MENÚ LATERAL
@@ -173,7 +173,7 @@ def main():
             st.session_state.id_sesion = session_cookie
             cargar_sesion(session_cookie)
             st.session_state.inicio_confirmado = True
-            st.success(f"Sesión {session_cookie} cargada automáticamente desde la cookie.")
+            # st.success(f"Sesión {session_cookie} cargada automáticamente desde la cookie.")
             st.rerun()
 
     # Paso 1: Control de pantalla inicial
@@ -386,24 +386,6 @@ def main():
                     ##### COMPROBAR ##### no se muestran las cartas
                     elif modalidad in ["Incremento", "Libre-Puntos"]:
                         aplicar_estilos_botones()
-                        # def agregar_carta(carta):
-                        #     if carta in st.session_state.cartas_seleccionadas:
-                        #         st.session_state.cartas_seleccionadas[carta] += 1
-                        #     else:
-                        #         st.session_state.cartas_seleccionadas[carta] = 1
-
-                        # def mostrar_cartas(cartas):
-                        #     carta_items = list(cartas.items())
-                        #     columnas_por_fila = 3  # más adaptable a móviles
-
-                        #     for i in range(0, len(carta_items), columnas_por_fila):
-                        #         cols = st.columns(columnas_por_fila)
-                        #         for j in range(columnas_por_fila):
-                        #             if i + j < len(carta_items):
-                        #                 carta, _ = carta_items[i + j]
-                        #                 with cols[j]:
-                        #                     if st.button(f"{carta}", key=f"carta_{carta}"):
-                        #                         agregar_carta(carta)
                         def mostrar_cartas(cartas):
                             carta_items = list(cartas.items())
                             columnas_por_fila = 3
@@ -432,21 +414,30 @@ def main():
                             st.session_state.modo_editar_seleccion = False
 
                         if st.session_state.nombre_jugador is None:
+                            st.session_state.nombre_jugador = nombre_jugador  # ← primero asigna
+
                             jugadores = st.session_state.jugadores
                             if any(j.nombre == nombre_jugador for j in jugadores):
-                                st.session_state.nombre_jugador = nombre_jugador
                                 st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             else:
                                 st.warning("El nombre no coincide con ningún jugador.")
 
+
                         else:
                             st.info(f"Jugador seleccionado: **{nombre_jugador}**")
                             st.subheader("Selecciona las cartas jugadas")
-                            mostrar_cartas(cartas)
+                            if "cartas" in st.session_state and st.session_state.cartas is not None:
+                                cartas = st.session_state.cartas
+                                mostrar_cartas(cartas)
+                            else:
+                                # st.error("No se han cargado las cartas correctamente. Intenta volver a cargar la sesión.")
+                                pass
+
 
                             total_puntos = 0
+                            # st.write(st.session_state.jugadores)
                             if st.session_state.cartas_seleccionadas:
-                                st.markdown("### 🧮 Cartas seleccionadas:")
+                                st.markdown("### 🧮 Cartas seleccionadas:")                                
 
                                 if not st.session_state.modo_editar_seleccion:
                                     # Mostrar resumen de selección
@@ -510,13 +501,6 @@ def main():
                                     st.session_state.cartas_seleccionadas = {}
                                     st.session_state.nombre_jugador = None
                                     st.rerun()
-
-                            # with col2:
-                            #     modificar = st.button("🔄 Modificar selección", key="btn_modificar_seleccion")
-                            #     if modificar:
-                            #         st.session_state.modo_editar_seleccion = True
-                            #         st.rerun()
-
 
                         # Botón para finalizar la partida (solo en Libre-Puntos)
                         if st.session_state.parametros.modalidad == "Libre-Puntos":
@@ -693,14 +677,16 @@ def main():
                                     client = get_client()
                                     response = client.table("Historial").delete().eq("id", id_borrar).execute()
                                     if hasattr(response, "error") and response.error is not None:
-                                        st.error(f"Error al eliminar: {response.error.message}")
+                                        # st.error(f"Error al eliminar: {response.error.message}")
+                                        pass
                                     else:
                                         # Consideramos éxito si no hay error
                                         st.success(f"Registro con ID {id_borrar} eliminado correctamente.")
-                                        reenumerar_ids()
+                                        reenumerar_ids_historial()
                                         st.rerun()
                                 except Exception as e:
-                                    st.error(f"Error al eliminar registro: {str(e)}")
+                                    # st.error(f"Error al eliminar registro: {str(e)}")
+                                    pass
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
 
@@ -770,6 +756,7 @@ def main():
                         st.success(f"Sesión {sesion_id_a_eliminar} eliminada correctamente.")
                         if sesion_id_a_eliminar == cookies.get("id_sesion"):
                             borrar_session_state()
+                            # reenumerar_ids_sesion()
                             cookies.remove("id_sesion")
                         st.rerun()
                     else:
@@ -781,6 +768,7 @@ def main():
     # ========================
     elif pagina == "🏠 Inicio":
         borrar_session_state()
+        # reenumerar_ids_sesion()
         cookies.remove("id_sesion")
         st.rerun()
     
@@ -793,6 +781,7 @@ def main():
     elif pagina == "🗑️ Borrar Sesion Actual":
         almacenar_parametros("eliminar", id=st.session_state.id_sesion)
         borrar_session_state()
+        # reenumerar_ids_sesion()
         cookies.remove("id_sesion")
         st.rerun()
 
@@ -803,6 +792,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        st.error(f"[Error inesperado]")
+    except Exception as e:
+        st.error(f"[Error inesperado] {e}")
         st.stop()       
