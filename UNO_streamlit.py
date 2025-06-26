@@ -671,16 +671,15 @@ def main():
                             st.write(f"ID: {r['id']} - {r['mensaje']}")
 
                         # Input para eliminar registro por ID
-                        id_borrar = st.text_input("Introduce el ID del registro a eliminar")
+                        id_borrar = st.number_input("Introduce el ID del registro a eliminar", min_value=1, step=1, format="%d")
 
                         if st.button("Eliminar registro"):
-                            if not id_borrar.strip():
+                            if not id_borrar:
                                 st.warning("Introduce un ID válido para eliminar.")
                             else:
                                 try:
                                     client = get_client()
-                                    # Borra el registro con el id especificado
-                                    response = client.table("Historial").delete().eq("id", int(id_borrar)).execute()
+                                    response = client.table("Historial").delete().eq("id", id_borrar).execute()
 
                                     if hasattr(response, "error") and response.error is not None:
                                         st.error(f"Error al eliminar: {response.error.message}")
@@ -688,11 +687,12 @@ def main():
                                         st.error(f"Error al eliminar: Código {response.status_code}")
                                     else:
                                         st.success(f"Registro con ID {id_borrar} eliminado correctamente.")
-                                        # Reenumerar IDs tras eliminar
                                         reenumerar_ids()
-                                        st.rerun()
+                                        st.experimental_rerun()
+
                                 except Exception as e:
                                     st.error(f"Error al eliminar registro: {str(e)}")
+
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
 
