@@ -22,7 +22,7 @@ cookies = CookieController()
 def reenumerar_ids():
     client = get_client()
     # Obtener todos los registros ordenados por id ascendente
-    response = client.table("Historial").select("id").order("id", ascending=True).execute()
+    response = client.table("Historial").select("id").order("id", desc=False).execute()
 
     if response.data:
         registros = response.data
