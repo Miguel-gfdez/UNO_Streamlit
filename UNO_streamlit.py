@@ -61,7 +61,7 @@ def pantalla_inicial():
     "<div style='text-align: right; font-size: 14px; color: gray;'>🌐 Idioma: Spanish</div>",
     unsafe_allow_html=True)
 
-    st.markdown("<h1 style='text-align: center;'>🎲 Bienvenido/a</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>♦️♠️ Bienvenido/a ♥️♣️</h1>", unsafe_allow_html=True)
 
     client = get_client()
 
