@@ -690,16 +690,13 @@ def main():
                                 try:
                                     client = get_client()
                                     response = client.table("Historial").delete().eq("id", id_borrar).execute()
-
                                     if hasattr(response, "error") and response.error is not None:
                                         st.error(f"Error al eliminar: {response.error.message}")
-                                    elif response.status_code not in (200, 204):
-                                        st.error(f"Error al eliminar: Código {response.status_code}")
                                     else:
+                                        # Consideramos éxito si no hay error
                                         st.success(f"Registro con ID {id_borrar} eliminado correctamente.")
                                         reenumerar_ids()
-                                        st.experimental_rerun()
-
+                                        st.rerun()
                                 except Exception as e:
                                     st.error(f"Error al eliminar registro: {str(e)}")
                 else:
