@@ -41,8 +41,8 @@ def pantalla_inicial():
     # st.title("🎲 Bienvenido/a")
     st.markdown(
     "<div style='text-align: right; font-size: 14px; color: gray;'>🌐 Idioma: Spanish</div>",
-    unsafe_allow_html=True
-)
+    unsafe_allow_html=True)
+
     st.markdown("<h1 style='text-align: center;'>🎲 Bienvenido/a</h1>", unsafe_allow_html=True)
 
     client = get_client()
@@ -115,7 +115,10 @@ def borrar_session_state():
     st.session_state.inicio = False
     st.session_state.parametros = None
     st.session_state.inicio_confirmado = False
+    st.session_state.juego_bloqueado = False
     st.session_state.id_sesion = None
+    st.session_state.cartas_seleccionadas = None
+    st.session_state.partida_finalizada = False
 
 
 # ========================
@@ -344,6 +347,7 @@ def main():
                                             contador_partidas += 1
                                     almacenar_jugadores("modificar", "valor")
                                     st.success(f"{nombre_jugador} ha ganado 1 punto.")
+                                    st.rerun()
                                 else:
                                     st.warning("El nombre no coincide con ningún jugador.")
 
