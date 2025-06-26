@@ -306,6 +306,9 @@ def main():
 
             nombres_jugadores = [""] + [j.nombre for j in st.session_state.jugadores]
             nombre_jugador = st.selectbox("Selecciona el nombre del jugador", nombres_jugadores, index=0)
+            if nombre_jugador and nombre_jugador in [j.nombre for j in st.session_state.jugadores]:
+                st.session_state.nombre_jugador = nombre_jugador
+
 
             if st.session_state.juego_bloqueado:
                 st.warning("🏁 La partida ha finalizado. Reinicia las puntuaciones para comenzar una nueva ronda.")
@@ -316,7 +319,7 @@ def main():
                     modalidad = st.session_state.parametros.modalidad
 
                     if modalidad == "Partidas":
-                        st.info(f"Jugador seleccionado: **{nombre_jugador}**")
+                        st.info(f"Jugador seleccionado: **{st.session_state.nombre_jugador}**")
 
                         jugadores = st.session_state.jugadores
                         num_jugadores = len(jugadores)
@@ -340,13 +343,13 @@ def main():
                         else:
                             # Si la condición se cumple, se puede confirmar ganador y sumar puntos
                             if st.button("Confirmar ganador"):
-                                if any(j.nombre == nombre_jugador for j in jugadores):
+                                if any(j.nombre == st.session_state.nombre_jugador for j in jugadores):
                                     for j in jugadores:
-                                        if j.nombre == nombre_jugador:
+                                        if j.nombre == st.session_state.nombre_jugador:
                                             j.puntos += 1
                                             contador_partidas += 1
                                     almacenar_jugadores("modificar", "valor")
-                                    st.success(f"{nombre_jugador} ha ganado 1 punto.")
+                                    st.success(f"{st.session_state.nombre_jugador} ha ganado 1 punto.")
                                     st.rerun()
                                 else:
                                     st.warning("El nombre no coincide con ningún jugador.")
