@@ -704,8 +704,6 @@ def main():
                 else:
                     st.error("Contraseña incorrecta. Acceso denegado.")
 
-
-    
     # ========================
     # Sesiones Activas
     # Esta sección permite ver las sesiones activas y eliminar sesiones específicas o todas las sesiones
@@ -806,4 +804,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        st.stop()        
+        st.error(f"[Error inesperado]")
+        st.stop()       
