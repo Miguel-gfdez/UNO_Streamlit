@@ -41,7 +41,8 @@ def init_session_state():
 # ========================
 def pantalla_inicial():
     aplicar_estilos_botones()
-    
+    st.write(os.getenv("SUPABASE_KEY")[:20])
+
 
     st.markdown(
     "<div style='text-align: right; font-size: 14px; color: gray;'>🌐 Idioma: Spanish</div>",
